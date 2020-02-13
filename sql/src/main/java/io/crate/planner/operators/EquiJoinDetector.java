@@ -22,15 +22,15 @@
 
 package io.crate.planner.operators;
 
-import io.crate.analyze.relations.AnalyzedRelation;
 import io.crate.expression.operator.AndOperator;
 import io.crate.expression.operator.EqOperator;
 import io.crate.expression.operator.OrOperator;
-import io.crate.expression.symbol.Field;
 import io.crate.expression.symbol.Function;
+import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.SymbolVisitor;
 import io.crate.planner.node.dql.join.JoinType;
+import io.crate.sql.tree.QualifiedName;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -67,7 +67,7 @@ public class EquiJoinDetector {
     private static class Context {
         boolean isHashJoinPossible = false;
         boolean insideEqOperator = false;
-        Set<AnalyzedRelation> usedRelationsInsideEqOperatorArgument = new HashSet<>();
+        Set<QualifiedName> usedRelationsInsideEqOperatorArgument = new HashSet<>();
     }
 
     private static class Visitor extends SymbolVisitor<Context, Void> {
@@ -108,7 +108,7 @@ public class EquiJoinDetector {
         }
 
         @Override
-        public Void visitField(Field field, Context context) {
+        public Void visitField(ScopedSymbol field, Context context) {
             if (context.insideEqOperator) {
                 context.usedRelationsInsideEqOperatorArgument.add(field.relation());
             }

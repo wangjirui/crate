@@ -62,9 +62,9 @@ import io.crate.expression.scalar.arithmetic.MapFunction;
 import io.crate.expression.scalar.cast.CastFunctionResolver;
 import io.crate.expression.scalar.conditional.IfFunction;
 import io.crate.expression.scalar.timestamp.CurrentTimestampFunction;
-import io.crate.expression.symbol.Field;
 import io.crate.expression.symbol.Function;
 import io.crate.expression.symbol.Literal;
+import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.SelectSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.WindowFunction;
@@ -987,8 +987,8 @@ public class ExpressionAnalyzer {
 
         @Override
         public Symbol visitMatchPredicate(MatchPredicate node, ExpressionAnalysisContext context) {
-            Map<Field, Symbol> identBoostMap = new HashMap<>(node.idents().size());
-            DataType columnType = null;
+            Map<ScopedSymbol, Symbol> identBoostMap = new HashMap<>(node.idents().size());
+            DataType<?> columnType = null;
             HashSet<QualifiedName> relationsInColumns = new HashSet<>();
             for (MatchPredicateColumnIdent ident : node.idents()) {
                 Symbol column = ident.columnIdent().accept(this, context);
@@ -996,12 +996,12 @@ public class ExpressionAnalyzer {
                     columnType = column.valueType();
                 }
                 Preconditions.checkArgument(
-                    column instanceof Field,
+                    column instanceof ScopedSymbol,
                     SymbolPrinter.format("can only MATCH on columns, not on %s", column));
                 Symbol boost = ident.boost().accept(this, context);
-                Field field = (Field) column;
+                ScopedSymbol field = (ScopedSymbol) column;
                 identBoostMap.put(field, boost);
-                relationsInColumns.add(field.relation().getQualifiedName());
+                relationsInColumns.add(field.relation());
             }
             if (relationsInColumns.size() > 1) {
                 throw new IllegalArgumentException("Cannot use MATCH predicates on columns of 2 different relations");
@@ -1030,7 +1030,7 @@ public class ExpressionAnalyzer {
              * this would require {@link StatementAnalysisContext#startRelation} to somehow inherit the parent context
              */
             AnalyzedRelation relation = subQueryAnalyzer.analyze(node.getQuery());
-            List<Field> fields = relation.fields();
+            List<Symbol> fields = relation.outputs();
             if (fields.size() > 1) {
                 throw new UnsupportedOperationException("Subqueries with more than 1 column are not supported.");
             }
@@ -1199,8 +1199,8 @@ public class ExpressionAnalyzer {
          * eq(2, name)  becomes  eq(name, 2)
          */
         private void swapIfNecessary() {
-            if ((!(right instanceof Reference || right instanceof Field)
-                || left instanceof Reference || left instanceof Field)
+            if ((!(right instanceof Reference || right instanceof ScopedSymbol)
+                || left instanceof Reference || left instanceof ScopedSymbol)
                 && left.valueType().id() != DataTypes.UNDEFINED.id()) {
                 return;
             }

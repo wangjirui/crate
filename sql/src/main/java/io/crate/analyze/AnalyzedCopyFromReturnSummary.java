@@ -25,8 +25,7 @@ package io.crate.analyze;
 import io.crate.analyze.relations.AnalyzedRelation;
 import io.crate.analyze.relations.AnalyzedRelationVisitor;
 import io.crate.exceptions.ColumnUnknownException;
-import io.crate.expression.symbol.Field;
-import io.crate.expression.symbol.InputColumn;
+import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.doc.DocTableInfo;
@@ -44,17 +43,8 @@ import java.util.List;
 
 public class AnalyzedCopyFromReturnSummary extends AnalyzedCopyFrom implements AnalyzedRelation {
 
-    private final List<Field> fields = List.of(
-        new Field(this, new ColumnIdent("node"), new InputColumn(0, ObjectType.builder()
-            .setInnerType("id", DataTypes.STRING)
-            .setInnerType("name", DataTypes.STRING)
-            .build())),
-        new Field(this, new ColumnIdent("uri"), new InputColumn(1, DataTypes.STRING)),
-        new Field(this, new ColumnIdent("success_count"), new InputColumn(2, DataTypes.LONG)),
-        new Field(this, new ColumnIdent("error_count"), new InputColumn(3, DataTypes.LONG)),
-        new Field(this, new ColumnIdent("errors"), new InputColumn(4, ObjectType.untyped()))
-    );
     private final QualifiedName qualifiedName;
+    private final List<ScopedSymbol> fields;
 
     AnalyzedCopyFromReturnSummary(DocTableInfo tableInfo,
                                   Table<Symbol> table,
@@ -62,6 +52,16 @@ public class AnalyzedCopyFromReturnSummary extends AnalyzedCopyFrom implements A
                                   Symbol uri) {
         super(tableInfo, table, properties, uri);
         qualifiedName = new QualifiedName(Arrays.asList(tableInfo.ident().schema(), tableInfo.ident().name()));
+        this.fields = List.of(
+            new ScopedSymbol(qualifiedName, new ColumnIdent("node"), ObjectType.builder()
+                .setInnerType("id", DataTypes.STRING)
+                .setInnerType("name", DataTypes.STRING)
+                .build()),
+            new ScopedSymbol(qualifiedName, new ColumnIdent("uri"), DataTypes.STRING),
+            new ScopedSymbol(qualifiedName, new ColumnIdent("success_count"), DataTypes.LONG),
+            new ScopedSymbol(qualifiedName, new ColumnIdent("error_count"), DataTypes.LONG),
+            new ScopedSymbol(qualifiedName, new ColumnIdent("errors"), ObjectType.untyped())
+        );
     }
 
     @Override
@@ -71,15 +71,9 @@ public class AnalyzedCopyFromReturnSummary extends AnalyzedCopyFrom implements A
     }
 
     @Override
-    public Field getField(ColumnIdent path, Operation operation)
+    public ScopedSymbol getField(ColumnIdent path, Operation operation)
         throws UnsupportedOperationException, ColumnUnknownException {
         throw new UnsupportedOperationException("getField is unsupported on internal relation for copy from return");
-    }
-
-    @Override
-    @Nonnull
-    public List<Field> fields() {
-        return fields;
     }
 
     @Override
@@ -87,6 +81,7 @@ public class AnalyzedCopyFromReturnSummary extends AnalyzedCopyFrom implements A
         return qualifiedName;
     }
 
+    @Nonnull
     @Override
     public List<Symbol> outputs() {
         return List.copyOf(fields);

@@ -35,6 +35,7 @@ import io.crate.exceptions.VersioninigValidationException;
 import io.crate.execution.dsl.phases.RoutedCollectPhase;
 import io.crate.execution.dsl.projection.builder.ProjectionBuilder;
 import io.crate.execution.engine.pipeline.TopN;
+import io.crate.expression.eval.EvaluatingNormalizer;
 import io.crate.expression.predicate.MatchPredicate;
 import io.crate.expression.symbol.Function;
 import io.crate.expression.symbol.Literal;
@@ -77,7 +78,7 @@ import static io.crate.planner.operators.Limit.limitAndOffset;
 public class Collect implements LogicalPlan {
 
     private static final String COLLECT_PHASE_NAME = "collect";
-    final AbstractTableRelation relation;
+    final AbstractTableRelation<?> relation;
     private final boolean preferSourceLookup;
     private final List<Symbol> outputs;
     private final List<AbstractTableRelation> baseTables;
@@ -116,7 +117,7 @@ public class Collect implements LogicalPlan {
         this.numExpectedRows = numExpectedRows;
         this.estimatedRowSize = estimatedRowSize;
         if (where.hasQuery() && !(relation instanceof DocTableRelation)) {
-            NoPredicateVisitor.ensureNoMatchPredicate(where.query());
+            NoPredicateVisitor.ensureNoMatchPredicate(where.queryOrFallback());
         }
         this.relation = relation;
         this.where = where;
@@ -132,12 +133,19 @@ public class Collect implements LogicalPlan {
                                @Nullable Integer pageSizeHint,
                                Row params,
                                SubQueryResults subQueryResults) {
-        RoutedCollectPhase collectPhase = createPhase(plannerContext, params, subQueryResults);
+        EvaluatingNormalizer normalizer = new EvaluatingNormalizer(
+            plannerContext.functions(),
+            RowGranularity.CLUSTER,
+            null,
+            relation
+        );
+        var binder = new SubQueryAndParamBinder(params, subQueryResults)
+            .andThen(x -> normalizer.normalize(x, plannerContext.transactionContext()));
+        RoutedCollectPhase collectPhase = createPhase(plannerContext, binder);
         PositionalOrderBy positionalOrderBy = getPositionalOrderBy(order, outputs);
         if (positionalOrderBy != null) {
             collectPhase.orderBy(
-                order
-                    .map(s -> SubQueryAndParamBinder.convert(s, params, subQueryResults))
+                order.map(binder)
                     // Filter out literal constants as ordering by constants is a NO-OP and also not supported
                     // on the collect operation.
                     .exclude(s -> s instanceof Literal));
@@ -215,9 +223,8 @@ public class Collect implements LogicalPlan {
         }
     }
 
-    private RoutedCollectPhase createPhase(PlannerContext plannerContext, Row params, SubQueryResults subQueryResults) {
+    private RoutedCollectPhase createPhase(PlannerContext plannerContext, java.util.function.Function<Symbol, Symbol> binder) {
         SessionContext sessionContext = plannerContext.transactionContext().sessionContext();
-        SubQueryAndParamBinder binder = new SubQueryAndParamBinder(params, subQueryResults);
 
         // bind all parameters and possible subQuery values and re-analyze the query
         // (could result in a NO_MATCH, routing could've changed, etc).

@@ -22,13 +22,12 @@
 
 package io.crate.analyze;
 
-import io.crate.action.sql.SessionContext;
 import io.crate.analyze.relations.AliasedAnalyzedRelation;
 import io.crate.analyze.relations.AnalyzedRelation;
 import io.crate.expression.operator.LikeOperators;
 import io.crate.expression.symbol.Function;
 import io.crate.expression.symbol.Symbol;
-import io.crate.metadata.CoordinatorTxnCtx;
+import io.crate.expression.symbol.Symbols;
 import io.crate.metadata.Reference;
 import io.crate.metadata.ReferenceIdent;
 import io.crate.test.integration.CrateDummyClusterServiceUnitTest;
@@ -40,6 +39,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.List;
 
+import static io.crate.testing.SymbolMatchers.isAlias;
 import static io.crate.testing.SymbolMatchers.isField;
 import static io.crate.testing.SymbolMatchers.isFunction;
 import static io.crate.testing.SymbolMatchers.isLiteral;
@@ -70,9 +70,7 @@ public class GroupByAnalyzerTest extends CrateDummyClusterServiceUnitTest {
 
     private <T extends AnalyzedStatement> T analyze(String statement) {
         //noinspection unchecked
-        return (T) sqlExecutor.normalize(
-            sqlExecutor.analyze(statement),
-            new CoordinatorTxnCtx(SessionContext.systemSessionContext()));
+        return (T) sqlExecutor.<AnalyzedRelation>analyze(statement);
     }
 
     @Test
@@ -85,15 +83,15 @@ public class GroupByAnalyzerTest extends CrateDummyClusterServiceUnitTest {
     public void testGroupKeyNotInResultColumnList() throws Exception {
         AnalyzedRelation relation = analyze("select count(*) from sys.nodes group by name");
         assertThat(relation.groupBy().size(), is(1));
-        assertThat(relation.fields().get(0).path().sqlFqn(), is("count(*)"));
+        assertThat(Symbols.pathFromSymbol(relation.outputs().get(0)).sqlFqn(), is("count(*)"));
     }
 
     @Test
     public void testGroupByOnAlias() throws Exception {
         AnalyzedRelation relation = analyze("select count(*), name as n from sys.nodes group by n");
         assertThat(relation.groupBy().size(), is(1));
-        assertThat(relation.fields().get(0).path().sqlFqn(), is("count(*)"));
-        assertThat(relation.fields().get(1).path().sqlFqn(), is("n"));
+        assertThat(Symbols.pathFromSymbol(relation.outputs().get(0)).sqlFqn(), is("count(*)"));
+        assertThat(Symbols.pathFromSymbol(relation.outputs().get(1)).sqlFqn(), is("n"));
 
         assertEquals(relation.groupBy().get(0), relation.outputs().get(1));
     }
@@ -144,9 +142,7 @@ public class GroupByAnalyzerTest extends CrateDummyClusterServiceUnitTest {
         assertThat(relation.groupBy().isEmpty(), is(false));
         List<Symbol> groupBySymbols = relation.groupBy();
         Symbol groupBy = groupBySymbols.get(0);
-        assertThat(groupBy, instanceOf(Function.class));
-        Function groupByFunction = (Function) groupBy;
-        assertThat(((Reference) groupByFunction.arguments().get(1)).column().fqn(), is("age"));
+        assertThat(groupBy, isAlias("thealias", isFunction("divide")));
     }
 
     @Test
@@ -172,7 +168,7 @@ public class GroupByAnalyzerTest extends CrateDummyClusterServiceUnitTest {
         AnalyzedRelation relation = analyze("select 58 as fiftyEight from foo.users group by fiftyEight;");
         assertThat(relation.groupBy().isEmpty(), is(false));
         List<Symbol> groupBySymbols = relation.groupBy();
-        assertThat(groupBySymbols.get(0).symbolType().isValueSymbol(), is(true));
+        assertThat(groupBySymbols.get(0), isAlias("fiftyeight", isLiteral(58L)));
     }
 
     @Test

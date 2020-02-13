@@ -39,10 +39,10 @@ import io.crate.expression.operator.LikeOperators;
 import io.crate.expression.operator.LtOperator;
 import io.crate.expression.operator.any.AnyOperators;
 import io.crate.expression.scalar.conditional.CoalesceFunction;
-import io.crate.expression.symbol.Field;
 import io.crate.expression.symbol.Function;
 import io.crate.expression.symbol.Literal;
 import io.crate.expression.symbol.ParameterSymbol;
+import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.CoordinatorTxnCtx;
@@ -150,14 +150,14 @@ public class ExpressionAnalyzerTest extends CrateDummyClusterServiceUnitTest {
             null);
         ExpressionAnalysisContext expressionAnalysisContext = new ExpressionAnalysisContext();
 
-        Field field1 = (Field) expressionAnalyzer.convert(SqlParser.createExpression("obj['x']"), expressionAnalysisContext);
-        Field field2 = (Field) expressionAnalyzer.convert(SqlParser.createExpression("\"obj['x']\""), expressionAnalysisContext);
+        ScopedSymbol field1 = (ScopedSymbol) expressionAnalyzer.convert(SqlParser.createExpression("obj['x']"), expressionAnalysisContext);
+        ScopedSymbol field2 = (ScopedSymbol) expressionAnalyzer.convert(SqlParser.createExpression("\"obj['x']\""), expressionAnalysisContext);
         assertEquals(field1, field2);
 
-        Field field3 = (Field) expressionAnalyzer.convert(SqlParser.createExpression("\"myObj['x']\""), expressionAnalysisContext);
-        assertEquals("myObj['x']", field3.path().toString());
-        Field field4 = (Field) expressionAnalyzer.convert(SqlParser.createExpression("\"myObj['x']['AbC']\""), expressionAnalysisContext);
-        assertEquals("myObj['x']['AbC']", field4.path().toString());
+        ScopedSymbol field3 = (ScopedSymbol) expressionAnalyzer.convert(SqlParser.createExpression("\"myObj['x']\""), expressionAnalysisContext);
+        assertEquals("myObj['x']", field3.column().toString());
+        ScopedSymbol field4 = (ScopedSymbol) expressionAnalyzer.convert(SqlParser.createExpression("\"myObj['x']['AbC']\""), expressionAnalysisContext);
+        assertEquals("myObj['x']['AbC']", field4.column().toString());
     }
 
     @Test
@@ -231,8 +231,8 @@ public class ExpressionAnalyzerTest extends CrateDummyClusterServiceUnitTest {
         Function andFunction = (Function) expressionAnalyzer.convert(
             SqlParser.createExpression("not t1.id = 1 and not t2.id = 1"), context);
 
-        Field t1Id = ((Field) ((Function) ((Function) andFunction.arguments().get(0)).arguments().get(0)).arguments().get(0));
-        Field t2Id = ((Field) ((Function) ((Function) andFunction.arguments().get(1)).arguments().get(0)).arguments().get(0));
+        ScopedSymbol t1Id = ((ScopedSymbol) ((Function) ((Function) andFunction.arguments().get(0)).arguments().get(0)).arguments().get(0));
+        ScopedSymbol t2Id = ((ScopedSymbol) ((Function) ((Function) andFunction.arguments().get(1)).arguments().get(0)).arguments().get(0));
         assertTrue(t1Id.relation() != t2Id.relation());
     }
 

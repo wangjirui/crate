@@ -43,7 +43,6 @@ import io.crate.execution.dsl.projection.builder.ProjectionBuilder;
 import io.crate.execution.engine.NodeOperationTreeGenerator;
 import io.crate.expression.symbol.Literal;
 import io.crate.expression.symbol.Symbol;
-import io.crate.expression.symbol.Symbols;
 import io.crate.expression.symbol.format.SymbolPrinter;
 import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.CoordinatorTxnCtx;
@@ -208,6 +207,7 @@ public final class CopyToPlan implements Plan {
         boolean columnsDefined = false;
         List<String> outputNames = null;
         if (!copyTo.columns().isEmpty()) {
+            // TODO: remove outputNames?
             outputNames = new ArrayList<>(copyTo.columns().size());
             for (Symbol symbol : copyTo.columns()) {
                 outputNames.add(SymbolPrinter.printUnqualified(symbol));
@@ -261,9 +261,6 @@ public final class CopyToPlan implements Plan {
         QueriedSelectRelation<DocTableRelation> subRelation = new QueriedSelectRelation<>(
             false,
             tableRelation,
-            outputNames == null
-                ? Lists2.map(outputs, Symbols::pathFromSymbol)
-                : Lists2.map(outputNames, ColumnIdent::new),
             querySpec
         );
 

@@ -44,7 +44,6 @@ import io.crate.analyze.relations.DocTableRelation;
 import io.crate.analyze.relations.FullQualifiedNameFieldProvider;
 import io.crate.analyze.relations.ParentRelations;
 import io.crate.analyze.relations.RelationAnalyzer;
-import io.crate.analyze.relations.RelationNormalizer;
 import io.crate.analyze.relations.StatementAnalysisContext;
 import io.crate.auth.user.User;
 import io.crate.auth.user.UserManager;
@@ -177,7 +176,6 @@ public class SQLExecutor {
     private final Functions functions;
     public final Analyzer analyzer;
     public final Planner planner;
-    private final RelationNormalizer relationNormalizer;
     private final RelationAnalyzer relAnalyzer;
     private final SessionContext sessionContext;
     private final CoordinatorTxnCtx coordinatorTxnCtx;
@@ -203,18 +201,6 @@ public class SQLExecutor {
             new CoordinatorTxnCtx(sessionContext),
             -1,
             null
-        );
-    }
-
-    public <T extends AnalyzedRelation> T normalize(AnalyzedRelation relation, CoordinatorTxnCtx txnCtx) {
-        //noinspection unchecked
-        return (T) relationNormalizer.normalize(relation, txnCtx);
-    }
-
-    public <T extends AnalyzedRelation> T normalize(String statement) {
-        return normalize(
-            analyze(statement),
-            new CoordinatorTxnCtx(SessionContext.systemSessionContext())
         );
     }
 
@@ -669,7 +655,6 @@ public class SQLExecutor {
                         Random random,
                         FulltextAnalyzerResolver fulltextAnalyzerResolver) {
         this.functions = functions;
-        this.relationNormalizer = new RelationNormalizer(functions);
         this.analyzer = analyzer;
         this.planner = planner;
         this.relAnalyzer = relAnalyzer;
@@ -771,14 +756,6 @@ public class SQLExecutor {
 
     public <T extends LogicalPlan> T logicalPlan(String statement) {
         AnalyzedStatement stmt = analyze(statement, ParamTypeHints.EMPTY);
-        if (stmt instanceof AnalyzedRelation) {
-            // unboundAnalyze currently doesn't normalize; which breaks LogicalPlan building for joins
-            // because the subRelations are not yet AnalyzedRelations.
-            // we eventually should integrate normalize into unboundAnalyze.
-            // But then we have to remove the whereClauseAnalyzer calls because they depend on all values being available
-            stmt = new RelationNormalizer(functions)
-                .normalize((AnalyzedRelation) stmt, coordinatorTxnCtx);
-        }
         return (T) planner.plan(stmt, getPlannerContext(planner.currentClusterState()));
     }
 

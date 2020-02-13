@@ -30,10 +30,10 @@ import io.crate.data.Input;
 import io.crate.data.Row;
 import io.crate.execution.engine.collect.CollectExpression;
 import io.crate.expression.InputFactory;
-import io.crate.expression.symbol.FieldReplacer;
 import io.crate.expression.symbol.Function;
 import io.crate.expression.symbol.InputColumn;
 import io.crate.expression.symbol.Literal;
+import io.crate.expression.symbol.RefReplacer;
 import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.CoordinatorTxnCtx;
 import io.crate.metadata.FunctionImplementation;
@@ -185,7 +185,7 @@ public abstract class AbstractScalarFunctionsTest extends CrateDummyClusterServi
             return;
         }
         LinkedList<Literal<?>> unusedLiterals = new LinkedList<>(Arrays.asList(literals));
-        Function function = (Function) FieldReplacer.replaceFields(functionSymbol, f -> {
+        Function function = (Function) RefReplacer.replaceRefs(functionSymbol, f -> {
             Literal<?> literal = unusedLiterals.pollFirst();
             if (literal == null) {
                 throw new IllegalArgumentException("No value literal for field=" + f + ", please add more literals");

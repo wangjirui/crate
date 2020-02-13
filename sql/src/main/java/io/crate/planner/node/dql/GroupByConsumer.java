@@ -23,7 +23,6 @@ package io.crate.planner.node.dql;
 
 import io.crate.analyze.WhereClause;
 import io.crate.expression.symbol.DefaultTraversalSymbolVisitor;
-import io.crate.expression.symbol.Field;
 import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.format.SymbolPrinter;
 import io.crate.metadata.ColumnIdent;
@@ -93,11 +92,6 @@ public class GroupByConsumer {
                         SymbolPrinter.format("Cannot GROUP BY '%s': grouping on analyzed/fulltext columns is not possible", symbol));
             }
             return null;
-        }
-
-        @Override
-        public Void visitField(Field field, Void context) {
-            return field.pointer().accept(this, context);
         }
     }
 }

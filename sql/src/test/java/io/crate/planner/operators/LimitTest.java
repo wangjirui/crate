@@ -50,7 +50,7 @@ public class LimitTest extends CrateDummyClusterServiceUnitTest {
         SQLExecutor e = SQLExecutor.builder(clusterService, 2, RandomizedTest.getRandom())
             .addTable(TableDefinitions.USER_TABLE_DEFINITION)
             .build();
-        QueriedSelectRelation<?> queriedDocTable = e.normalize("select name from users");
+        QueriedSelectRelation<?> queriedDocTable = e.analyze("select name from users");
 
         LogicalPlan plan = Limit.create(
             Limit.create(

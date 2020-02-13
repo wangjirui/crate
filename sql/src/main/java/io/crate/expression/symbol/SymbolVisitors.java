@@ -74,7 +74,7 @@ public class SymbolVisitors {
             if (symbolPredicate.test(matchPredicate)) {
                 return true;
             }
-            for (Field field : matchPredicate.identBoostMap().keySet()) {
+            for (ScopedSymbol field : matchPredicate.identBoostMap().keySet()) {
                 if (field.accept(this, symbolPredicate)) {
                     return true;
                 }

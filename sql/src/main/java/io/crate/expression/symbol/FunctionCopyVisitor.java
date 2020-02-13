@@ -152,6 +152,17 @@ public abstract class FunctionCopyVisitor<C> extends SymbolVisitor<C, Symbol> {
     }
 
     @Override
+    public Symbol visitAlias(AliasSymbol aliasSymbol, C context) {
+        Symbol symbol = aliasSymbol.symbol();
+        Symbol newSymbol = symbol.accept(this, context);
+        if (symbol == newSymbol) {
+            return aliasSymbol;
+        } else {
+            return new AliasSymbol(aliasSymbol.alias(), newSymbol);
+        }
+    }
+
+    @Override
     public Symbol visitDynamicReference(DynamicReference ref, C context) {
         return visitReference(ref, context);
     }

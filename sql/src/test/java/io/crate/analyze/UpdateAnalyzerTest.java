@@ -53,7 +53,6 @@ import io.crate.types.DataType;
 import io.crate.types.DataTypes;
 import io.crate.types.DoubleType;
 import io.crate.types.ObjectType;
-import org.hamcrest.core.Is;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -550,7 +549,7 @@ public class UpdateAnalyzerTest extends CrateDummyClusterServiceUnitTest {
         assertThat(
             stmt.assignmentByTargetCol().keySet(),
             contains(isReference("name", DataTypes.STRING)));
-        assertThat(stmt.returnValues().size(), is(17));
+        assertThat(stmt.outputs().size(), is(17));
     }
 
     @Test
@@ -560,8 +559,7 @@ public class UpdateAnalyzerTest extends CrateDummyClusterServiceUnitTest {
         assertThat(
             stmt.assignmentByTargetCol().keySet(),
             contains(isReference("name", DataTypes.STRING)));
-        assertThat(stmt.fields(), contains(isField("foo")));
-        assertThat(stmt.returnValues(), contains(isReference("id")));
+        assertThat(stmt.outputs(), contains(isReference("id")));
     }
 
     @Test
@@ -571,8 +569,7 @@ public class UpdateAnalyzerTest extends CrateDummyClusterServiceUnitTest {
         assertThat(
             stmt.assignmentByTargetCol().keySet(),
             contains(isReference("name", DataTypes.STRING)));
-        assertThat(stmt.fields(), is(contains(isField("foo"), isField("bar"))));
-        assertThat(stmt.returnValues(), contains(isReference("id"), isReference("name")));
+        assertThat(stmt.outputs(), is(contains(isField("foo"), isField("bar"))));
     }
 
     @Test
@@ -589,8 +586,7 @@ public class UpdateAnalyzerTest extends CrateDummyClusterServiceUnitTest {
         assertThat(
             stmt.assignmentByTargetCol().keySet(),
             contains(isReference("name", DataTypes.STRING)));
-        assertThat(stmt.fields(), is(contains(isField("foo"))));
-        assertThat(stmt.returnValues(), contains(isFunction("add")));
+        assertThat(stmt.outputs(), is(contains(isField("foo"))));
     }
 
     @Test
@@ -600,8 +596,7 @@ public class UpdateAnalyzerTest extends CrateDummyClusterServiceUnitTest {
         assertThat(
             stmt.assignmentByTargetCol().keySet(),
             contains(isReference("name", DataTypes.STRING)));
-        assertThat(stmt.fields(), is(contains(isField("foo"), isField("bar"))));
-        assertThat(stmt.returnValues(), contains(isFunction("add"), isFunction("subtract")));
+        assertThat(stmt.outputs(), is(contains(isField("foo"), isField("bar"))));
     }
 
     private List<Object[]> execute(Plan plan, Row params) throws Exception {

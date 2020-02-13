@@ -31,7 +31,6 @@ import io.crate.analyze.relations.QuerySplitter;
 import io.crate.data.Row;
 import io.crate.execution.engine.join.JoinOperations;
 import io.crate.expression.operator.AndOperator;
-import io.crate.expression.symbol.FieldsVisitor;
 import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.CoordinatorTxnCtx;
 import io.crate.metadata.Functions;
@@ -50,7 +49,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 /**
@@ -108,8 +106,8 @@ public class JoinPlanBuilder {
 
         AnalyzedRelation lhs = mss.sources().get(lhsName);
         AnalyzedRelation rhs = mss.sources().get(rhsName);
-        LogicalPlan lhsPlan = LogicalPlanner.plan(lhs, subqueryPlanner, false, functions, txnCtx, hints, tableStats, params);
-        LogicalPlan rhsPlan = LogicalPlanner.plan(rhs, subqueryPlanner, false, functions, txnCtx, hints, tableStats, params);
+        LogicalPlan lhsPlan = LogicalPlanner.plan(lhs, subqueryPlanner, functions, txnCtx, hints, tableStats, params);
+        LogicalPlan rhsPlan = LogicalPlanner.plan(rhs, subqueryPlanner, functions, txnCtx, hints, tableStats, params);
         Symbol query = removeParts(queryParts, lhsName, rhsName);
         LogicalPlan joinPlan = createJoinPlan(
             lhsPlan,
@@ -217,8 +215,7 @@ public class JoinPlanBuilder {
             condition = joinPair.condition();
         }
 
-        LogicalPlan nextPlan = LogicalPlanner.plan(nextRel, subqueryPlanner, false, functions, txnCtx, hints, tableStats, params);
-
+        LogicalPlan nextPlan = LogicalPlanner.plan(nextRel, subqueryPlanner, functions, txnCtx, hints, tableStats, params);
         Symbol query = AndOperator.join(
             Stream.of(
                 removeMatch(queryParts, joinNames, nextName),
@@ -259,25 +256,5 @@ public class JoinPlanBuilder {
             }
         }
         return null;
-    }
-
-    private static void addColumnsFrom(Iterable<? extends Symbol> symbols,
-                                       Consumer<? super Symbol> consumer,
-                                       AnalyzedRelation rel) {
-
-        for (Symbol symbol : symbols) {
-            addColumnsFrom(symbol, consumer, rel);
-        }
-    }
-
-    private static void addColumnsFrom(@Nullable Symbol symbol, Consumer<? super Symbol> consumer, AnalyzedRelation rel) {
-        if (symbol == null) {
-            return;
-        }
-        FieldsVisitor.visitFields(symbol, f -> {
-            if (f.relation().getQualifiedName().equals(rel.getQualifiedName())) {
-                consumer.accept(f.pointer());
-            }
-        });
     }
 }

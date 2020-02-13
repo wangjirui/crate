@@ -43,7 +43,7 @@ public class Symbols {
 
     private static final HasColumnVisitor HAS_COLUMN_VISITOR = new HasColumnVisitor();
 
-    public static final Predicate<Symbol> IS_COLUMN = s -> s instanceof Field || s instanceof Reference;
+    public static final Predicate<Symbol> IS_COLUMN = s -> s instanceof ScopedSymbol || s instanceof Reference;
     public static final Predicate<Symbol> IS_GENERATED_COLUMN = input -> input instanceof GeneratedReference;
 
     public static List<DataType> typeView(List<? extends Symbol> symbols) {
@@ -66,7 +66,7 @@ public class Symbols {
             if (key instanceof Reference && ((Reference) key).column().equals(column)) {
                 return entry.getValue();
             }
-            if (key instanceof Field && ((Field) key).path().equals(column)) {
+            if (key instanceof ScopedSymbol && ((ScopedSymbol) key).column().equals(column)) {
                 return entry.getValue();
             }
         }
@@ -136,8 +136,10 @@ public class Symbols {
     }
 
     public static ColumnIdent pathFromSymbol(Symbol symbol) {
-        if (symbol instanceof Field) {
-            return ((Field) symbol).path();
+        if (symbol instanceof AliasSymbol) {
+            return new ColumnIdent(((AliasSymbol) symbol).alias());
+        } else if (symbol instanceof ScopedSymbol) {
+            return ((ScopedSymbol) symbol).column();
         } else if (symbol instanceof Reference) {
             return ((Reference) symbol).column();
         }
@@ -170,8 +172,8 @@ public class Symbols {
         }
 
         @Override
-        public Boolean visitField(Field field, ColumnIdent column) {
-            return field.path().equals(column) || field.path().sqlFqn().equals(column.sqlFqn());
+        public Boolean visitField(ScopedSymbol field, ColumnIdent column) {
+            return field.column().equals(column);
         }
 
         @Override

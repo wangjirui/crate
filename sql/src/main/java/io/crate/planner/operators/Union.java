@@ -78,8 +78,24 @@ public class Union implements LogicalPlan {
                               Row params) {
         AnalyzedRelation left = union.left();
         AnalyzedRelation right = union.right();
-        LogicalPlan lhsPlan = LogicalPlanner.plan(left, subqueryPlanner, true, functions, txnCtx, hints, tableStats, params);
-        LogicalPlan rhsPlan = LogicalPlanner.plan(right, subqueryPlanner, true, functions, txnCtx, hints, tableStats, params);
+        LogicalPlan lhsPlan = LogicalPlanner.plan(
+            left,
+            subqueryPlanner,
+            functions,
+            txnCtx,
+            hints,
+            tableStats,
+            params
+        );
+        LogicalPlan rhsPlan = LogicalPlanner.plan(
+            right,
+            subqueryPlanner,
+            functions,
+            txnCtx,
+            hints,
+            tableStats,
+            params
+        );
 
         return new Union(lhsPlan, rhsPlan, union.outputs());
     }

@@ -24,7 +24,7 @@ package io.crate.analyze.relations;
 import io.crate.exceptions.AmbiguousColumnException;
 import io.crate.exceptions.ColumnUnknownException;
 import io.crate.exceptions.RelationUnknown;
-import io.crate.expression.symbol.Field;
+import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.RelationName;
 import io.crate.metadata.table.Operation;
@@ -43,7 +43,7 @@ import java.util.Objects;
  * The Resolver also takes full qualified names so the name may contain table
  * and / or schema.
  */
-public class FullQualifiedNameFieldProvider implements FieldProvider<Field> {
+public class FullQualifiedNameFieldProvider implements FieldProvider<Symbol> {
 
     private final Map<QualifiedName, AnalyzedRelation> sources;
     private final ParentRelations parents;
@@ -58,7 +58,7 @@ public class FullQualifiedNameFieldProvider implements FieldProvider<Field> {
     }
 
     @Override
-    public Field resolveField(QualifiedName qualifiedName, @Nullable List<String> path, Operation operation) {
+    public Symbol resolveField(QualifiedName qualifiedName, @Nullable List<String> path, Operation operation) {
         List<String> parts = qualifiedName.getParts();
         String columnSchema = null;
         String columnTableName = null;
@@ -81,7 +81,7 @@ public class FullQualifiedNameFieldProvider implements FieldProvider<Field> {
 
         boolean schemaMatched = false;
         boolean tableNameMatched = false;
-        Field lastField = null;
+        Symbol lastField = null;
 
         for (Map.Entry<QualifiedName, AnalyzedRelation> entry : sources.entrySet()) {
             List<String> sourceParts = entry.getKey().getParts();
@@ -108,7 +108,7 @@ public class FullQualifiedNameFieldProvider implements FieldProvider<Field> {
             tableNameMatched = true;
 
             AnalyzedRelation sourceRelation = entry.getValue();
-            Field newField = sourceRelation.getField(columnIdent, operation);
+            Symbol newField = sourceRelation.getField(columnIdent, operation);
             if (newField != null) {
                 if (lastField != null) {
                     throw new AmbiguousColumnException(columnIdent, newField);

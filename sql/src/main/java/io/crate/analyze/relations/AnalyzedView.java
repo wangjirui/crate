@@ -22,12 +22,10 @@
 
 package io.crate.analyze.relations;
 
-import io.crate.analyze.Fields;
 import io.crate.analyze.HavingClause;
 import io.crate.analyze.OrderBy;
 import io.crate.analyze.WhereClause;
 import io.crate.exceptions.ColumnUnknownException;
-import io.crate.expression.symbol.Field;
 import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.RelationName;
@@ -44,19 +42,15 @@ public final class AnalyzedView implements AnalyzedRelation {
     private final RelationName name;
     private final String owner;
     private final AnalyzedRelation relation;
-    private final Fields fields;
     private final List<Symbol> outputSymbols;
 
     public AnalyzedView(RelationName name, String owner, AnalyzedRelation relation) {
         this.name = name;
         this.qualifiedName = QualifiedName.of(name.schema(), name.name());
         this.owner = owner;
-        this.fields = new Fields(relation.fields().size());
         this.relation = relation;
-        for (Field field : relation.fields()) {
-            fields.add(new Field(this, field.path(), field));
-        }
-        this.outputSymbols = List.copyOf(relation.fields());
+        // TODO - does a view introduce a new scope?
+        this.outputSymbols = relation.outputs();
     }
 
     public String owner() {
@@ -82,17 +76,12 @@ public final class AnalyzedView implements AnalyzedRelation {
     }
 
     @Override
-    public Field getField(ColumnIdent path, Operation operation) throws UnsupportedOperationException, ColumnUnknownException {
+    public Symbol getField(ColumnIdent path, Operation operation) throws UnsupportedOperationException, ColumnUnknownException {
         if (operation != Operation.READ) {
             throw new UnsupportedOperationException("getField on AnalyzedView is only supported for READ operations");
         }
-        return fields.getWithSubscriptFallback(path, this, relation);
-    }
-
-    @Override
-    @Nonnull
-    public List<Field> fields() {
-        return fields.asList();
+        // TODO: would need to change if view introduces a scope
+        return relation.getField(path, operation);
     }
 
     @Override
@@ -100,6 +89,7 @@ public final class AnalyzedView implements AnalyzedRelation {
         return qualifiedName;
     }
 
+    @Nonnull
     @Override
     public List<Symbol> outputs() {
         return outputSymbols;

@@ -52,7 +52,8 @@ public enum SymbolType {
     PARAMETER(ParameterSymbol::new),
     SELECT_SYMBOL(in -> {
         throw new UnsupportedOperationException("SelectSymbol is not streamable");
-    });
+    }),
+    ALIAS(AliasSymbol::new);
 
     public static final List<SymbolType> VALUES = ImmutableList.copyOf(values());
 

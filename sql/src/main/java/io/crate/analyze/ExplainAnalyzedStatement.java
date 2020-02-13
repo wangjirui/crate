@@ -25,8 +25,7 @@ package io.crate.analyze;
 import io.crate.analyze.relations.AnalyzedRelation;
 import io.crate.analyze.relations.AnalyzedRelationVisitor;
 import io.crate.exceptions.ColumnUnknownException;
-import io.crate.expression.symbol.Field;
-import io.crate.expression.symbol.InputColumn;
+import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.table.Operation;
@@ -36,20 +35,19 @@ import io.crate.types.ObjectType;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.Collections;
 import java.util.List;
 
 public class ExplainAnalyzedStatement implements AnalyzedStatement, AnalyzedRelation {
 
     final AnalyzedStatement statement;
-    private final List<Field> fields;
     private final ProfilingContext context;
     private final List<Symbol> outputs;
+    private final QualifiedName relationName;
 
     ExplainAnalyzedStatement(String columnName, AnalyzedStatement statement, ProfilingContext context) {
-        Field field = new Field(this, new ColumnIdent(columnName), new InputColumn(0, ObjectType.untyped()));
+        relationName = new QualifiedName("explain");
+        ScopedSymbol field = new ScopedSymbol(relationName, new ColumnIdent(columnName), ObjectType.untyped());
         this.statement = statement;
-        this.fields = Collections.singletonList(field);
         this.context = context;
         this.outputs = List.of(field);
     }
@@ -74,14 +72,8 @@ public class ExplainAnalyzedStatement implements AnalyzedStatement, AnalyzedRela
     }
 
     @Override
-    public Field getField(ColumnIdent path, Operation operation) throws UnsupportedOperationException, ColumnUnknownException {
+    public ScopedSymbol getField(ColumnIdent path, Operation operation) throws UnsupportedOperationException, ColumnUnknownException {
         throw new UnsupportedOperationException("getField is not supported");
-    }
-
-    @Override
-    @Nonnull
-    public List<Field> fields() {
-        return fields;
     }
 
     @Override
@@ -91,9 +83,10 @@ public class ExplainAnalyzedStatement implements AnalyzedStatement, AnalyzedRela
 
     @Override
     public QualifiedName getQualifiedName() {
-        throw new UnsupportedOperationException("method not supported");
+        return relationName;
     }
 
+    @Nonnull
     @Override
     public List<Symbol> outputs() {
         return outputs;

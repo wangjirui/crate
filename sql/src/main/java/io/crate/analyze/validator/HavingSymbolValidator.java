@@ -21,7 +21,6 @@
 
 package io.crate.analyze.validator;
 
-import io.crate.expression.symbol.Field;
 import io.crate.expression.symbol.Function;
 import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.SymbolVisitor;
@@ -60,16 +59,6 @@ public class HavingSymbolValidator {
     private static class InnerValidator extends SymbolVisitor<HavingContext, Void> {
 
         @Override
-        public Void visitField(Field field, HavingContext context) {
-            if (!context.insideAggregation && !context.groupByContains(field)) {
-                throw new IllegalArgumentException(
-                    SymbolPrinter.format("Cannot use column %s outside of an Aggregation in HAVING clause. " +
-                                         "Only GROUP BY keys allowed here.", field));
-            }
-            return null;
-        }
-
-        @Override
         public Void visitFunction(Function function, HavingContext context) {
             FunctionInfo.Type type = function.info().type();
             if (type == FunctionInfo.Type.TABLE) {
@@ -99,6 +88,11 @@ public class HavingSymbolValidator {
 
         @Override
         protected Void visitSymbol(Symbol symbol, HavingContext context) {
+            if (!context.insideAggregation && !context.groupByContains(symbol)) {
+                throw new IllegalArgumentException(
+                    SymbolFormatter.format("Cannot use column %s outside of an Aggregation in HAVING clause. " +
+                                           "Only GROUP BY keys allowed here.", symbol));
+            }
             return null;
         }
     }

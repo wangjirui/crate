@@ -22,13 +22,12 @@
 
 package io.crate.analyze.relations;
 
-import io.crate.analyze.Fields;
 import io.crate.analyze.HavingClause;
 import io.crate.analyze.OrderBy;
 import io.crate.analyze.WhereClause;
 import io.crate.exceptions.ColumnUnknownException;
-import io.crate.expression.symbol.Field;
 import io.crate.expression.symbol.Function;
+import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.format.SymbolPrinter;
 import io.crate.metadata.ColumnIdent;
@@ -55,8 +54,7 @@ public class TableFunctionRelation implements AnalyzedRelation, FieldResolver {
     private final TableFunctionImplementation<?> functionImplementation;
     private final Function function;
     private final QualifiedName qualifiedName;
-    private final Fields fields;
-    private final List<Symbol> outputs;
+    private final List<Reference> outputs;
 
     public TableFunctionRelation(TableFunctionImplementation<?> functionImplementation,
                                  Function function,
@@ -65,7 +63,6 @@ public class TableFunctionRelation implements AnalyzedRelation, FieldResolver {
         this.function = function;
         this.qualifiedName = qualifiedName;
         RowType rowType = functionImplementation.returnType();
-        this.fields = new Fields(rowType.numElements());
         this.outputs = new ArrayList<>(rowType.numElements());
         int idx = 0;
         FunctionName functionName = function.info().ident().fqnName();
@@ -75,7 +72,6 @@ public class TableFunctionRelation implements AnalyzedRelation, FieldResolver {
             String fieldName = rowType.getFieldName(i);
             var ref = new Reference(new ReferenceIdent(relationName, fieldName), RowGranularity.DOC, type, idx, null);
             outputs.add(ref);
-            fields.add(new Field(this, new ColumnIdent(fieldName), ref));
             idx++;
         }
     }
@@ -94,17 +90,16 @@ public class TableFunctionRelation implements AnalyzedRelation, FieldResolver {
     }
 
     @Override
-    public Field getField(ColumnIdent path, Operation operation) throws UnsupportedOperationException, ColumnUnknownException {
+    public Reference getField(ColumnIdent path, Operation operation) throws UnsupportedOperationException, ColumnUnknownException {
         if (operation == Operation.READ) {
-            return fields.get(path);
+            for (Reference output : outputs) {
+                if (output.column().equals(path)) {
+                    return output;
+                }
+            }
+            return null;
         }
         throw new UnsupportedOperationException("Table functions don't support write operations");
-    }
-
-    @Nonnull
-    @Override
-    public List<Field> fields() {
-        return fields.asList();
     }
 
     @Override
@@ -112,9 +107,10 @@ public class TableFunctionRelation implements AnalyzedRelation, FieldResolver {
         return qualifiedName;
     }
 
+    @Nonnull
     @Override
     public List<Symbol> outputs() {
-        return outputs;
+        return List.copyOf(outputs);
     }
 
     @Override
@@ -168,9 +164,8 @@ public class TableFunctionRelation implements AnalyzedRelation, FieldResolver {
 
     @Nullable
     @Override
-    public Symbol resolveField(Field field) {
-        Field resolvedField = fields.get(field.path());
-        return resolvedField == null ? null : resolvedField.pointer();
+    public Symbol resolveField(ScopedSymbol field) {
+        return getField(field.column(), Operation.READ);
     }
 
     @Override

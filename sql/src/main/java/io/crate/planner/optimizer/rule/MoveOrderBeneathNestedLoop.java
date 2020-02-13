@@ -23,12 +23,10 @@
 package io.crate.planner.optimizer.rule;
 
 import io.crate.analyze.OrderBy;
-import io.crate.analyze.relations.AnalyzedRelation;
-import io.crate.expression.symbol.Field;
 import io.crate.expression.symbol.FieldsVisitor;
+import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.TransactionContext;
-import io.crate.statistics.TableStats;
 import io.crate.planner.operators.LogicalPlan;
 import io.crate.planner.operators.NestedLoopJoin;
 import io.crate.planner.operators.Order;
@@ -36,6 +34,8 @@ import io.crate.planner.optimizer.Rule;
 import io.crate.planner.optimizer.matcher.Capture;
 import io.crate.planner.optimizer.matcher.Captures;
 import io.crate.planner.optimizer.matcher.Pattern;
+import io.crate.sql.tree.QualifiedName;
+import io.crate.statistics.TableStats;
 
 import java.util.Collections;
 import java.util.IdentityHashMap;
@@ -80,16 +80,16 @@ public final class MoveOrderBeneathNestedLoop implements Rule<Order> {
                              TableStats tableStats,
                              TransactionContext txnCtx) {
         NestedLoopJoin nestedLoop = captures.get(nlCapture);
-        Set<AnalyzedRelation> relationsInOrderBy =
+        Set<QualifiedName> relationsInOrderBy =
             Collections.newSetFromMap(new IdentityHashMap<>());
-        Consumer<Field> gatherRelations = f -> relationsInOrderBy.add(f.relation());
+        Consumer<ScopedSymbol> gatherRelations = f -> relationsInOrderBy.add(f.relation());
         OrderBy orderBy = order.orderBy();
         for (Symbol orderExpr : orderBy.orderBySymbols()) {
             FieldsVisitor.visitFields(orderExpr, gatherRelations);
         }
         if (relationsInOrderBy.size() == 1) {
-            AnalyzedRelation relationInOrderBy = relationsInOrderBy.iterator().next();
-            if (relationInOrderBy == nestedLoop.topMostLeftRelation()) {
+            QualifiedName relationInOrderBy = relationsInOrderBy.iterator().next();
+            if (relationInOrderBy == nestedLoop.topMostLeftRelation().getQualifiedName()) {
                 LogicalPlan lhs = nestedLoop.sources().get(0);
                 LogicalPlan newLhs = order.replaceSources(List.of(lhs));
                 return new NestedLoopJoin(

@@ -95,9 +95,10 @@ public class LogicalPlannerTest extends CrateDummyClusterServiceUnitTest {
     @Test
     public void testQTFWithOrderByAndAlias() throws Exception {
         LogicalPlan plan = plan("select a, x from t1 as t order by a");
-        assertThat(plan, isPlan("Boundary[a, x]\n" +
+        assertThat(plan, isPlan("Eval[a, x]\n" +
                                 "OrderBy[a ASC]\n" +
-                                "Collect[doc.t1 | [a, x] | true]\n"));
+                                "Rename[a, x, i] AS t\n" +
+                                "Collect[doc.t1 | [a, x, i] | true]\n"));
     }
 
     @Test
@@ -389,12 +390,14 @@ public class LogicalPlannerTest extends CrateDummyClusterServiceUnitTest {
                 sb.append("]\n");
                 plan = boundary.source;
             }
-            if (plan instanceof RelationBoundary) {
-                RelationBoundary boundary = (RelationBoundary) plan;
-                startLine("Boundary[");
-                addSymbolsList(boundary.outputs());
-                sb.append("]\n");
-                plan = boundary.source;
+            if (plan instanceof Rename) {
+                Rename rename = (Rename) plan;
+                startLine("Rename[");
+                addSymbolsList(rename.outputs());
+                sb.append("] AS ");
+                sb.append(rename.name);
+                sb.append("\n");
+                plan = rename.source;
             }
             if (plan instanceof GroupHashAggregate) {
                 GroupHashAggregate groupHashAggregate = (GroupHashAggregate) plan;

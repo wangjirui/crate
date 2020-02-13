@@ -27,7 +27,6 @@ import io.crate.analyze.HavingClause;
 import io.crate.analyze.OrderBy;
 import io.crate.analyze.WhereClause;
 import io.crate.exceptions.ColumnUnknownException;
-import io.crate.expression.symbol.Field;
 import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.table.Operation;
@@ -38,18 +37,34 @@ import javax.annotation.Nullable;
 import java.util.List;
 import java.util.function.Consumer;
 
+/**
+ * Represents a relation
+ *
+ * <pre>
+ *     {@code
+ *      tbl
+ *      SELECT * FROM tbl
+ *
+ *      SELECT * FROM tbl AS t
+ *
+ *      SELECT * FROM tbl1, tbl2
+ *
+ *      SELECT * FROM tbl AS t1, tbl AS t2
+ *
+ *      SELECT * FROM (SELECT * FROM tbl) as t
+ *     }
+ * </pre>
+ */
 public interface AnalyzedRelation extends AnalyzedStatement {
 
     <C, R> R accept(AnalyzedRelationVisitor<C, R> visitor, C context);
 
-    Field getField(ColumnIdent path, Operation operation) throws UnsupportedOperationException, ColumnUnknownException;
-
-    @Nonnull
-    List<Field> fields();
+    Symbol getField(ColumnIdent path, Operation operation) throws UnsupportedOperationException, ColumnUnknownException;
 
     QualifiedName getQualifiedName();
 
-    /** * @return The outputs of the relation */
+    @Nonnull
+    @Override
     List<Symbol> outputs();
 
     /**

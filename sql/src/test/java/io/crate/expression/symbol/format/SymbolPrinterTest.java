@@ -29,7 +29,7 @@ import io.crate.analyze.relations.TableRelation;
 import io.crate.expression.symbol.Aggregation;
 import io.crate.expression.symbol.DynamicReference;
 import io.crate.expression.symbol.FetchReference;
-import io.crate.expression.symbol.Field;
+import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.InputColumn;
 import io.crate.expression.symbol.Literal;
 import io.crate.expression.symbol.Symbol;
@@ -326,10 +326,13 @@ public class SymbolPrinterTest extends CrateDummyClusterServiceUnitTest {
 
     @Test
     public void testPrintFetchRefs() throws Exception {
-        Field field = (Field) sqlExpressions.asSymbol("bar");
+        ScopedSymbol field = (ScopedSymbol) sqlExpressions.asSymbol("bar");
+        fail("todo");
+        /*
         Reference reference = ((AbstractTableRelation) field.relation()).resolveField(field);
-        Symbol fetchRef = new FetchReference(new InputColumn(1,reference.valueType()), reference);
+        Symbol fetchRef = new FetchReference(new InputColumn(1,reference. valueType()), reference);
         assertPrint(fetchRef, "FETCH(INPUT(1), doc.formatter.bar)");
+        */
     }
 
     @Test

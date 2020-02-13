@@ -21,7 +21,7 @@
 
 package io.crate.planner.consumer;
 
-import io.crate.expression.symbol.Field;
+import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Function;
 import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.SymbolVisitor;
@@ -83,7 +83,7 @@ public class OrderByWithAggregationValidator {
         }
 
         @Override
-        public Void visitField(Field field, ValidatorContext context) {
+        public Void visitField(ScopedSymbol field, ValidatorContext context) {
             if (context.outputSymbols.contains(field)) {
                 return null;
             } else {

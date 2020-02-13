@@ -26,7 +26,8 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import io.crate.analyze.relations.AnalyzedRelation;
 import io.crate.exceptions.AmbiguousColumnAliasException;
-import io.crate.expression.symbol.Field;
+import io.crate.expression.symbol.ScopedSymbol;
+import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.table.Operation;
 
@@ -37,21 +38,21 @@ import java.util.List;
 
 public class Fields {
 
-    private final Multimap<String, Field> fieldsMap = HashMultimap.create();
-    private final List<Field> fieldsList;
+    private final Multimap<String, ScopedSymbol> fieldsMap = HashMultimap.create();
+    private final List<ScopedSymbol> fieldsList;
 
     public Fields(int expectedSize) {
         fieldsList = new ArrayList<>(expectedSize);
     }
 
-    public void add(Field value) {
-        fieldsMap.put(value.path().sqlFqn(), value);
+    public void add(ScopedSymbol value) {
+        fieldsMap.put(value.column().sqlFqn(), value);
         fieldsList.add(value);
     }
 
     @Nullable
-    public Field get(ColumnIdent key) {
-        Collection<Field> fieldList = fieldsMap.get(key.sqlFqn());
+    public ScopedSymbol get(ColumnIdent key) {
+        Collection<ScopedSymbol> fieldList = fieldsMap.get(key.sqlFqn());
         if (fieldList.size() > 1) {
             throw new AmbiguousColumnAliasException(key.sqlFqn(), fieldList);
         }
@@ -62,21 +63,21 @@ public class Fields {
     }
 
     @Nullable
-    public Field getWithSubscriptFallback(ColumnIdent column,
-                                          AnalyzedRelation scope,
-                                          AnalyzedRelation childRelation) {
-        Field field = get(column);
+    public ScopedSymbol getWithSubscriptFallback(ColumnIdent column,
+                                                 AnalyzedRelation scope,
+                                                 AnalyzedRelation childRelation) {
+        ScopedSymbol field = get(column);
         if (field == null && !column.isTopLevel()) {
-            Field childField = childRelation.getField(column, Operation.READ);
+            Symbol childField = childRelation.getField(column, Operation.READ);
             if (childField == null) {
                 return null;
             }
-            return new Field(scope, column, childField);
+            return new ScopedSymbol(scope.getQualifiedName(), column, childField.valueType());
         }
         return field;
     }
 
-    public List<Field> asList() {
+    public List<ScopedSymbol> asList() {
         return fieldsList;
     }
 

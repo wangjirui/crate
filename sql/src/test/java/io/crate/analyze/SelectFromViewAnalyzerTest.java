@@ -50,7 +50,7 @@ public class SelectFromViewAnalyzerTest extends CrateDummyClusterServiceUnitTest
 
     @Test
     public void testSelectFromViewIsResolvedToViewQueryDefinition() {
-        QueriedSelectRelation<?> query = e.normalize("select * from doc.v1");
+        QueriedSelectRelation<?> query = e.analyze("select * from doc.v1");
         assertThat(query.outputs(), Matchers.contains(isField("name"), isField("count(*)")));
         assertThat(query.groupBy(), Matchers.empty());
         assertThat(query.subRelation(), instanceOf(AnalyzedView.class));

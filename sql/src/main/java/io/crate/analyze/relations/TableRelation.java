@@ -21,9 +21,9 @@
 
 package io.crate.analyze.relations;
 
-import io.crate.expression.symbol.Field;
 import io.crate.exceptions.ColumnUnknownException;
 import io.crate.metadata.ColumnIdent;
+import io.crate.metadata.Reference;
 import io.crate.metadata.table.Operation;
 import io.crate.metadata.table.TableInfo;
 import io.crate.sql.tree.QualifiedName;
@@ -44,7 +44,7 @@ public class TableRelation extends AbstractTableRelation<TableInfo> {
     }
 
     @Override
-    public Field getField(ColumnIdent path, Operation operation) throws ColumnUnknownException {
+    public Reference getField(ColumnIdent path, Operation operation) throws ColumnUnknownException {
         switch (operation) {
             case READ:
             case UPDATE:

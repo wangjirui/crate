@@ -25,7 +25,7 @@ package io.crate.expression.symbol;
 import java.util.HashMap;
 import java.util.function.Function;
 
-public final class FieldReplacer extends FunctionCopyVisitor<Function<? super Field, ? extends Symbol>> {
+public final class FieldReplacer extends FunctionCopyVisitor<Function<? super ScopedSymbol, ? extends Symbol>> {
 
     private static final FieldReplacer REPLACER = new FieldReplacer();
 
@@ -33,30 +33,30 @@ public final class FieldReplacer extends FunctionCopyVisitor<Function<? super Fi
         super();
     }
 
-    public static Symbol replaceFields(Symbol tree, Function<? super Field, ? extends Symbol> replaceFunc) {
+    public static Symbol replaceFields(Symbol tree, Function<? super ScopedSymbol, ? extends Symbol> replaceFunc) {
         if (tree == null) {
             return null;
         }
         return tree.accept(REPLACER, replaceFunc);
     }
 
-    public static Function<? super Symbol, ? extends Symbol> bind(Function<? super Field, ? extends Symbol> replaceFunc) {
+    public static Function<? super Symbol, ? extends Symbol> bind(Function<? super ScopedSymbol, ? extends Symbol> replaceFunc) {
         return st -> replaceFields(st, replaceFunc);
     }
 
     @Override
-    public Symbol visitField(Field field, Function<? super Field, ? extends Symbol> replaceFunc) {
+    public Symbol visitField(ScopedSymbol field, Function<? super ScopedSymbol, ? extends Symbol> replaceFunc) {
         return replaceFunc.apply(field);
     }
 
     @Override
     public Symbol visitMatchPredicate(MatchPredicate matchPredicate,
-                                      Function<? super Field, ? extends Symbol> mapper) {
-        HashMap<Field, Symbol> newIdentBoost = new HashMap<>();
+                                      Function<? super ScopedSymbol, ? extends Symbol> mapper) {
+        HashMap<ScopedSymbol, Symbol> newIdentBoost = new HashMap<>();
         for (var entry : matchPredicate.identBoostMap().entrySet()) {
             Symbol newKey = mapper.apply(entry.getKey());
-            if (newKey instanceof Field) {
-                newIdentBoost.put((Field) newKey, entry.getValue().accept(this, mapper));
+            if (newKey instanceof ScopedSymbol) {
+                newIdentBoost.put((ScopedSymbol) newKey, entry.getValue().accept(this, mapper));
             } else {
                 newIdentBoost.put(entry.getKey(), entry.getValue().accept(this, mapper));
             }

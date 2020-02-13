@@ -24,7 +24,6 @@ package io.crate.analyze;
 
 import io.crate.analyze.relations.AliasedAnalyzedRelation;
 import io.crate.analyze.relations.AnalyzedRelation;
-import io.crate.analyze.relations.TableFunctionRelation;
 import io.crate.test.integration.CrateDummyClusterServiceUnitTest;
 import io.crate.testing.SQLExecutor;
 import io.crate.testing.SymbolMatchers;
@@ -62,7 +61,7 @@ public class ValuesAnalyzerTest extends CrateDummyClusterServiceUnitTest {
     @Test
     public void test_values_used_in_sub_query_can_be_analyzed() {
         AliasedAnalyzedRelation rel = e.analyze("SELECT x, y FROM (VALUES (1, 2)) AS t (x, y)");
-        assertThat(rel.fields(), contains(
+        assertThat(rel.outputs(), contains(
             SymbolMatchers.isField("x"),
             SymbolMatchers.isField("y")
         ));

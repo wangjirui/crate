@@ -117,7 +117,7 @@ public class JoinTest extends CrateDummyClusterServiceUnitTest {
     @Test
     public void testNestedLoop_TablesAreSwitchedIfLeftIsSmallerThanRight() {
         txnCtx.sessionContext().setHashJoinEnabled(false);
-        MultiSourceSelect mss = e.normalize("select * from users, locations where users.id = locations.id");
+        MultiSourceSelect mss = e.analyze("select * from users, locations where users.id = locations.id");
 
         TableStats tableStats = new TableStats();
         Map<RelationName, Stats> rowCountByTable = new HashMap<>();
@@ -146,7 +146,7 @@ public class JoinTest extends CrateDummyClusterServiceUnitTest {
         RelationName leftName = new RelationName("j", "left_table");
         RelationName rightName = new RelationName("j", "right_table");
 
-        MultiSourceSelect mss = e.normalize("select * from j.left_table as l left join j.right_table as r on l.id = r.id");
+        MultiSourceSelect mss = e.analyze("select * from j.left_table as l left join j.right_table as r on l.id = r.id");
 
         TableStats tableStats = new TableStats();
         Map<RelationName, Stats> rowCountByTable = new HashMap<>();
@@ -171,8 +171,8 @@ public class JoinTest extends CrateDummyClusterServiceUnitTest {
     public void testNestedLoop_TablesAreNotSwitchedIfLeftHasAPushedDownOrderBy() {
         txnCtx.sessionContext().setHashJoinEnabled(false);
         // we use a subselect to simulate the pushed-down order by
-        MultiSourceSelect mss = e.normalize("select users.id from (select id from users order by id) users, " +
-                                            "locations where users.id = locations.id");
+        MultiSourceSelect mss = e.analyze("select users.id from (select id from users order by id) users, " +
+                                          "locations where users.id = locations.id");
 
         TableStats tableStats = new TableStats();
         Map<RelationName, Stats> rowCountByTable = new HashMap<>();
@@ -222,9 +222,9 @@ public class JoinTest extends CrateDummyClusterServiceUnitTest {
 
     @Test
     public void testHashJoin_TableOrderInLogicalAndExecutionPlan() {
-        MultiSourceSelect mss = e.normalize("select users.name, locations.id " +
-                                            "from users " +
-                                            "join locations on users.id = locations.id");
+        MultiSourceSelect mss = e.analyze("select users.name, locations.id " +
+                                          "from users " +
+                                          "join locations on users.id = locations.id");
 
         TableStats tableStats = new TableStats();
         Map<RelationName, Stats> rowCountByTable = new HashMap<>();
@@ -242,9 +242,9 @@ public class JoinTest extends CrateDummyClusterServiceUnitTest {
 
     @Test
     public void testHashJoin_TablesSwitchWhenRightBiggerThanLeft() {
-        MultiSourceSelect mss = e.normalize("select users.name, locations.id " +
-                                            "from users " +
-                                            "join locations on users.id = locations.id");
+        MultiSourceSelect mss = e.analyze("select users.name, locations.id " +
+                                          "from users " +
+                                          "join locations on users.id = locations.id");
 
         TableStats tableStats = new TableStats();
         Map<RelationName, Stats> rowCountByTable = new HashMap<>();
@@ -262,9 +262,9 @@ public class JoinTest extends CrateDummyClusterServiceUnitTest {
 
     @Test
     public void testMultipleHashJoins() {
-        MultiSourceSelect mss = e.normalize("select * " +
-                                            "from t1 inner join t2 on t1.a = t2.b " +
-                                            "inner join t3 on t3.c = t2.b");
+        MultiSourceSelect mss = e.analyze("select * " +
+                                          "from t1 inner join t2 on t1.a = t2.b " +
+                                          "inner join t3 on t3.c = t2.b");
 
         LogicalPlan operator = createLogicalPlan(mss, new TableStats());
         assertThat(operator, instanceOf(HashJoin.class));
@@ -279,9 +279,9 @@ public class JoinTest extends CrateDummyClusterServiceUnitTest {
 
     @Test
     public void testMixedHashJoinNestedLoop() {
-        MultiSourceSelect mss = e.normalize("select * " +
-                                            "from t1 inner join t2 on t1.a = t2.b " +
-                                            "left join t3 on t3.c = t2.b");
+        MultiSourceSelect mss = e.analyze("select * " +
+                                          "from t1 inner join t2 on t1.a = t2.b " +
+                                          "left join t3 on t3.c = t2.b");
 
         LogicalPlan operator = createLogicalPlan(mss, new TableStats());
         assertThat(operator, instanceOf(NestedLoopJoin.class));
@@ -304,7 +304,7 @@ public class JoinTest extends CrateDummyClusterServiceUnitTest {
             .build();
         plannerCtx = e.getPlannerContext(clusterService.state());
 
-        MultiSourceSelect mss = e.normalize("select * from t1, t4");
+        MultiSourceSelect mss = e.analyze("select * from t1, t4");
 
         LogicalPlan operator = createLogicalPlan(mss, new TableStats());
         assertThat(operator, instanceOf(NestedLoopJoin.class));
@@ -332,7 +332,7 @@ public class JoinTest extends CrateDummyClusterServiceUnitTest {
             .build();
         plannerCtx = e.getPlannerContext(clusterService.state());
 
-        MultiSourceSelect mss = e.normalize("select * from t1, t4");
+        MultiSourceSelect mss = e.analyze("select * from t1, t4");
 
         LogicalPlan operator = createLogicalPlan(mss, tableStats);
         assertThat(operator, instanceOf(NestedLoopJoin.class));
@@ -365,7 +365,7 @@ public class JoinTest extends CrateDummyClusterServiceUnitTest {
             .build();
         plannerCtx = e.getPlannerContext(clusterService.state());
 
-        MultiSourceSelect mss = e.normalize("select * from t4, t1");
+        MultiSourceSelect mss = e.analyze("select * from t4, t1");
 
         LogicalPlan operator = createLogicalPlan(mss, tableStats);
         assertThat(operator, instanceOf(NestedLoopJoin.class));
@@ -398,7 +398,7 @@ public class JoinTest extends CrateDummyClusterServiceUnitTest {
             .build();
         plannerCtx = e.getPlannerContext(clusterService.state());
 
-        MultiSourceSelect mss = e.normalize("select * from t1, t4 order by t1.x");
+        MultiSourceSelect mss = e.analyze("select * from t1, t4 order by t1.x");
         LogicalPlanner logicalPlanner = new LogicalPlanner(
             functions,
             tableStats,
@@ -414,10 +414,10 @@ public class JoinTest extends CrateDummyClusterServiceUnitTest {
     @Test
     public void testPlanChainedJoinsWithWindowFunctionInOutput() {
         txnCtx.sessionContext().setHashJoinEnabled(false);
-        MultiSourceSelect mss = e.normalize("SELECT t1.a, t2.b, row_number() OVER(ORDER BY t3.z) " +
-                                            "FROM t1 t1 " +
-                                            "JOIN t2 t2 on t1.a = t2.b " +
-                                            "JOIN t3 t3 on t3.c = t2.b");
+        MultiSourceSelect mss = e.analyze("SELECT t1.a, t2.b, row_number() OVER(ORDER BY t3.z) " +
+                                          "FROM t1 t1 " +
+                                          "JOIN t2 t2 on t1.a = t2.b " +
+                                          "JOIN t3 t3 on t3.c = t2.b");
         LogicalPlanner logicalPlanner = new LogicalPlanner(
             functions,
             new TableStats(),

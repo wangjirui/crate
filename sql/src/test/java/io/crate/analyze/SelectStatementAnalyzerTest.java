@@ -22,12 +22,11 @@
 package io.crate.analyze;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
-import io.crate.action.sql.SessionContext;
 import io.crate.analyze.relations.AliasedAnalyzedRelation;
 import io.crate.analyze.relations.AnalyzedRelation;
 import io.crate.analyze.relations.TableFunctionRelation;
 import io.crate.analyze.relations.TableRelation;
+import io.crate.common.collections.Lists2;
 import io.crate.exceptions.AmbiguousColumnException;
 import io.crate.exceptions.ColumnUnknownException;
 import io.crate.exceptions.ConversionException;
@@ -47,14 +46,13 @@ import io.crate.expression.scalar.SubscriptFunction;
 import io.crate.expression.scalar.arithmetic.ArithmeticFunctions;
 import io.crate.expression.scalar.geo.DistanceFunction;
 import io.crate.expression.scalar.regex.MatchesFunction;
-import io.crate.expression.symbol.Field;
 import io.crate.expression.symbol.Function;
 import io.crate.expression.symbol.Literal;
 import io.crate.expression.symbol.ParameterSymbol;
 import io.crate.expression.symbol.SelectSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.SymbolType;
-import io.crate.metadata.CoordinatorTxnCtx;
+import io.crate.expression.symbol.Symbols;
 import io.crate.metadata.FunctionInfo;
 import io.crate.metadata.sys.SysNodesTableInfo;
 import io.crate.sql.parser.ParsingException;
@@ -71,13 +69,12 @@ import org.hamcrest.core.IsInstanceOf;
 import org.junit.Before;
 import org.junit.Test;
 
-import javax.annotation.Nullable;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import static io.crate.testing.SymbolMatchers.fieldPointsToReferenceOf;
+import static io.crate.testing.SymbolMatchers.isAlias;
 import static io.crate.testing.SymbolMatchers.isField;
 import static io.crate.testing.SymbolMatchers.isFunction;
 import static io.crate.testing.SymbolMatchers.isLiteral;
@@ -112,10 +109,7 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
     }
 
     private <T extends AnalyzedRelation> T analyze(String statement) {
-        return sqlExecutor.normalize(
-            sqlExecutor.analyze(statement),
-            new CoordinatorTxnCtx(SessionContext.systemSessionContext())
-        );
+        return sqlExecutor.analyze(statement);
     }
 
     @Test
@@ -189,19 +183,13 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
     }
 
     private List<String> outputNames(AnalyzedRelation relation) {
-        return Lists.transform(relation.fields(), new com.google.common.base.Function<Field, String>() {
-            @Nullable
-            @Override
-            public String apply(Field input) {
-                return input.path().sqlFqn();
-            }
-        });
+        return Lists2.map(relation.outputs(), x -> Symbols.pathFromSymbol(x).sqlFqn());
     }
 
     @Test
     public void testAllColumnCluster() throws Exception {
         AnalyzedRelation relation = analyze("select * from sys.cluster");
-        assertThat(relation.fields().size(), is(5));
+        assertThat(relation.outputs().size(), is(5));
         assertThat(outputNames(relation), containsInAnyOrder("id", "license", "master_node", "name", "settings"));
         assertThat(relation.outputs().size(), is(5));
     }
@@ -1408,11 +1396,11 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
     @Test
     public void testSubscriptArrayAsAlias() throws Exception {
         AnalyzedRelation relation = analyze("select tags[1] as t_alias from users");
-        assertThat(relation.outputs().get(0), isFunction(SubscriptFunction.NAME));
-        List<Symbol> arguments = ((Function) relation.outputs().get(0)).arguments();
-        assertThat(arguments.size(), is(2));
-        assertThat(arguments.get(0), isReference("tags"));
-        assertThat(arguments.get(1), isLiteral(1));
+        assertThat(
+            relation.outputs().get(0),
+            isAlias(
+                "t_alias",
+                isFunction(SubscriptFunction.NAME, isReference("tags"), isLiteral(1))));
     }
 
     @Test
@@ -1813,7 +1801,6 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
                            "col5, col6, col7, col8, " +
                            "col9, col10, col11";
         assertThat(relation.outputs(), isSQL(sqlFields));
-        assertThat(relation.fields(), isSQL(sqlFields));
     }
 
     @Test
@@ -1827,7 +1814,6 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
     public void testScalarCanBeUsedInFromClause() {
         QueriedSelectRelation<?> relation = analyze("select * from abs(1)");
         assertThat(relation.outputs(), isSQL("abs"));
-        assertThat(relation.fields(), isSQL("abs"));
         assertThat(relation.subRelation(), instanceOf(TableFunctionRelation.class));
     }
 
@@ -1896,7 +1882,7 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
     @Test
     public void testColumnOutputWithSingleRowSubselect() {
         AnalyzedRelation relation = analyze("select 1 = \n (select \n 2\n)\n");
-        assertThat(relation.fields(), isSQL("\"(1 = (SELECT 2))\""));
+        assertThat(relation.outputs(), isSQL("\"(1 = (SELECT 2))\""));
     }
 
     @Test
@@ -1962,18 +1948,25 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
     @Test
     public void test_element_within_object_array_of_derived_table_can_be_accessed_using_subscript() {
         AnalyzedRelation relation = analyze("select s.friends['id'] from (select friends from doc.users) s");
+        fail("todo");
+        /*
         assertThat(relation.outputs().get(0),
                    fieldPointsToReferenceOf("friends['id']", "doc.users"));
+
+         */
     }
 
     @Test
     public void test_can_access_element_within_object_array_of_derived_table_containing_a_join() {
         AnalyzedRelation relation = analyze("select joined.f1['id'], joined.f2['id'] from " +
                 "(select u1.friends as f1, u2.friends as f2 from doc.users u1, doc.users u2) joined");
+        fail("todo");
+        /*
         assertThat(relation.outputs().get(0),
                    fieldPointsToReferenceOf("friends['id']", "doc.users"));
         assertThat(relation.outputs().get(1),
                    fieldPointsToReferenceOf("friends['id']", "doc.users"));
+         */
     }
 
     @Test
@@ -1990,8 +1983,11 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
                 "  (select friends as f1 from doc.users u1 " +
                 "   union all" +
                 "   select friends from doc.users u2) as joined");
+        fail("update");
+        /*
         assertThat(relation.outputs().get(0),
                    fieldPointsToReferenceOf("friends['id']", "doc.users"));
+         */
     }
 
     @Test

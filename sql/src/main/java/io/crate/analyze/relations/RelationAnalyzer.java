@@ -48,6 +48,10 @@ import io.crate.exceptions.UnsupportedFeatureException;
 import io.crate.expression.scalar.arithmetic.ArrayFunction;
 import io.crate.expression.symbol.Field;
 import io.crate.expression.symbol.FieldReplacer;
+import io.crate.expression.symbol.Aggregations;
+import io.crate.expression.symbol.Field;
+import io.crate.expression.symbol.FieldReplacer;
+import io.crate.expression.symbol.Aggregations;
 import io.crate.expression.symbol.Function;
 import io.crate.expression.symbol.GroupAndAggregateSemantics;
 import io.crate.expression.symbol.Literal;
@@ -154,7 +158,7 @@ public class RelationAnalyzer extends DefaultTraversalVisitor<AnalyzedRelation, 
         relationAnalysisContext.addSourceRelation(childRelation.getQualifiedName().toString(), childRelation);
         statementContext.endRelation();
 
-        List<Field> childRelationFields = childRelation.fields();
+        List<Symbol> childRelationFields = childRelation.outputs();
         ExpressionAnalyzer expressionAnalyzer = new ExpressionAnalyzer(
             functions,
             statementContext.transactionContext(),
@@ -170,13 +174,12 @@ public class RelationAnalyzer extends DefaultTraversalVisitor<AnalyzedRelation, 
             relationAnalysisContext.sources(),
             expressionAnalyzer,
             expressionAnalysisContext);
-        for (Field field : childRelationFields) {
-            selectAnalysis.add(field.path(), field);
+        for (Symbol field : childRelationFields) {
+            selectAnalysis.add(Symbols.pathFromSymbol(field), field);
         }
         return new QueriedSelectRelation<>(
             false,
             childRelation,
-            selectAnalysis.outputNames(),
             new QuerySpec(
                 selectAnalysis.outputSymbols(),
                 WhereClause.MATCH_ALL,
@@ -362,59 +365,15 @@ public class RelationAnalyzer extends DefaultTraversalVisitor<AnalyzedRelation, 
         );
         AnalyzedRelation relation;
         if (context.sources().size() == 1) {
-            AnalyzedRelation source = Iterables.getOnlyElement(context.sources().values());
-
-            // The logical planner will do a GET optimization only for concrete table relations (QueriedTable).
-            // For aliased relations we must inject the QueriedTable on the source relation:
-            //
-            //      AliasedAnalyzedRelation -> AbstractTableRelation
-            //
-            //  must be changed to:
-            //
-            //      AliasedAnalyzedRelation -> QueriedTable -> AbstractTableRelation
-            //
-            // This is also necessary for TableFunctions for another reason:
-            //
-            // The QuerySplitter might add expressions to `toCollect` because
-            // they're a dependency for aggregates.  Due to how the
-            // LogicalPlanner currently works these `toCollect` expressions
-            // would be lost if there is a AliasedAnalyzedRelation in-between.
-            // That later on causes a failure as the TableFunction operator
-            // would lack the required outputs.
-            // `test_filter_with_subquery_in_aggregate_expr_for_group_by_aggregates` is a test scenario for that.
-            AliasedAnalyzedRelation aliasedRelation = null;
-            if (source instanceof AliasedAnalyzedRelation) {
-                aliasedRelation = (AliasedAnalyzedRelation) source;
-                if (aliasedRelation.relation() instanceof AbstractTableRelation
-                    || aliasedRelation.relation() instanceof TableFunctionRelation) {
-
-                    source = aliasedRelation.relation();
-                    AliasedAnalyzedRelation finalAliasedRelation = aliasedRelation;
-                    querySpec = querySpec.map(s -> FieldReplacer.replaceFields(s, f -> {
-                        if (f.relation().equals(finalAliasedRelation)) {
-                            return f.pointer();
-                        }
-                        return f;
-                    }));
-                } else {
-                    aliasedRelation = null;
-                }
-            }
             relation = new QueriedSelectRelation<>(
                 isDistinct,
-                source,
-                selectAnalysis.outputNames(),
+                Iterables.getOnlyElement(context.sources().values()),
                 querySpec
             );
-            if (aliasedRelation != null) {
-                relation = new AliasedAnalyzedRelation(relation, aliasedRelation.getQualifiedName(), aliasedRelation.columnAliases());
-            }
-
         } else {
             relation = new MultiSourceSelect(
                 isDistinct,
                 context.sources(),
-                selectAnalysis.outputNames(),
                 querySpec,
                 context.joinPairs()
             );

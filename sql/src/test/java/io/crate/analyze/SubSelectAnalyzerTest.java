@@ -22,12 +22,10 @@
 
 package io.crate.analyze;
 
-import io.crate.action.sql.SessionContext;
 import io.crate.analyze.relations.AbstractTableRelation;
 import io.crate.analyze.relations.AliasedAnalyzedRelation;
 import io.crate.analyze.relations.AnalyzedRelation;
 import io.crate.exceptions.AmbiguousColumnAliasException;
-import io.crate.metadata.CoordinatorTxnCtx;
 import io.crate.metadata.RelationName;
 import io.crate.metadata.doc.DocTableInfo;
 import io.crate.sql.tree.QualifiedName;
@@ -59,25 +57,23 @@ public class SubSelectAnalyzerTest extends CrateDummyClusterServiceUnitTest {
     }
 
     private <T extends AnalyzedRelation> T analyze(String stmt) {
-        return (T) executor.normalize(
-            executor.analyze(stmt),
-            new CoordinatorTxnCtx(SessionContext.systemSessionContext()));
+        return (T) executor.<AnalyzedRelation>analyze(stmt);
     }
 
     @Test
     public void testSimpleSubSelect() throws Exception {
         QueriedSelectRelation<?> relation = analyze(
             "select aliased_sub.x / aliased_sub.i from (select x, i from t1) as aliased_sub");
-        assertThat(relation.fields(), contains(isField("(x / i)")));
-        assertThat(relation.subRelation().fields(), contains(isField("x"), isField("i")));
+        assertThat(relation.outputs(), contains(isField("(x / i)")));
+        assertThat(relation.subRelation().outputs(), contains(isField("x"), isField("i")));
     }
 
     @Test
     public void testSimpleSubSelectWithMixedCases() throws Exception {
         AnalyzedRelation relation = analyze(
             "select aliased_sub.A from (select a from t1) as aliased_sub");
-        assertThat(relation.fields().size(), is(1));
-        assertThat(relation.fields().get(0), isField("a"));
+        assertThat(relation.outputs().size(), is(1));
+        assertThat(relation.outputs().get(0), isField("a"));
     }
 
     @Test
@@ -92,9 +88,9 @@ public class SubSelectAnalyzerTest extends CrateDummyClusterServiceUnitTest {
         QueriedSelectRelation<AliasedAnalyzedRelation> relation = analyze(
             "select tt.aa, (tt.xi + 1)" +
             " from (select (x + i) as xi, concat(a, a) as aa, i from t1) as tt");
-        assertThat(relation.fields().size(), is(2));
-        assertThat(relation.fields().get(0), isField("aa"));
-        assertThat(relation.fields().get(1), isField("(xi + 1)"));
+        assertThat(relation.outputs().size(), is(2));
+        assertThat(relation.outputs().get(0), isField("aa"));
+        assertThat(relation.outputs().get(1), isField("(xi + 1)"));
 
         QueriedSelectRelation<AbstractTableRelation> innerRel =
             (QueriedSelectRelation<AbstractTableRelation>) relation.subRelation().relation();
@@ -108,8 +104,8 @@ public class SubSelectAnalyzerTest extends CrateDummyClusterServiceUnitTest {
     public void testNestedSubSelect() throws Exception {
         AnalyzedRelation relation = analyze(
             "select aliased_sub.a from (select nested_sub.a from (select a from t1) as nested_sub) as aliased_sub");
-        assertThat(relation.fields().size(), is(1));
-        assertThat(relation.fields().get(0), isField("a"));
+        assertThat(relation.outputs().size(), is(1));
+        assertThat(relation.outputs().get(0), isField("a"));
     }
 
     @Test
@@ -119,9 +115,9 @@ public class SubSelectAnalyzerTest extends CrateDummyClusterServiceUnitTest {
         AliasedAnalyzedRelation aliasRel = (AliasedAnalyzedRelation) relation.subRelation();
         MultiSourceSelect mss = (MultiSourceSelect) aliasRel.relation();
         assertThat(mss.sources().size(), is(2));
-        assertThat(mss.fields().size(), is(2));
-        assertThat(mss.fields().get(0), isField("a"));
-        assertThat(mss.fields().get(1), isField("b"));
+        assertThat(mss.outputs().size(), is(2));
+        assertThat(mss.outputs().get(0), isField("a"));
+        assertThat(mss.outputs().get(1), isField("b"));
     }
 
     @Test
@@ -253,7 +249,7 @@ public class SubSelectAnalyzerTest extends CrateDummyClusterServiceUnitTest {
                                                  "   (select 10) + (select 20) as add_subquery "+
                                                  "FROM (select * from t1) tt1");
 
-        assertThat(relation.fields(), contains(
+        assertThat(relation.outputs(), contains(
             isField("min_col"),
             isField("add_subquery")
         ));
@@ -264,9 +260,9 @@ public class SubSelectAnalyzerTest extends CrateDummyClusterServiceUnitTest {
         QueriedSelectRelation<?> relation = analyze("SELECT tt1.x as a1, min(tt1.x) as a2 " +
                                                  "FROM (select * from t1) as tt1 " +
                                                  "GROUP BY a1");
-        assertThat(relation.fields().size(), is(2));
-        assertThat(relation.fields().get(0), isField("a1"));
-        assertThat(relation.fields().get(1), isField("a2"));
+        assertThat(relation.outputs().size(), is(2));
+        assertThat(relation.outputs().get(0), isField("a1"));
+        assertThat(relation.outputs().get(1), isField("a2"));
         QueriedSelectRelation<AbstractTableRelation<?>> queriedTable =
             (QueriedSelectRelation<AbstractTableRelation<?>>) ((AliasedAnalyzedRelation) relation.subRelation()).relation();
         assertThat(queriedTable.subRelation().tableInfo(), is(t1Info));

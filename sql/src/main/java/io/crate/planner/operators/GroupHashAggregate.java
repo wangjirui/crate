@@ -32,10 +32,8 @@ import io.crate.execution.dsl.projection.Projection;
 import io.crate.execution.dsl.projection.builder.ProjectionBuilder;
 import io.crate.execution.engine.pipeline.TopN;
 import io.crate.expression.symbol.AggregateMode;
-import io.crate.expression.symbol.Field;
 import io.crate.expression.symbol.Function;
 import io.crate.expression.symbol.Symbol;
-import io.crate.metadata.Reference;
 import io.crate.metadata.RowGranularity;
 import io.crate.metadata.doc.DocTableInfo;
 import io.crate.planner.ExecutionPlan;
@@ -43,8 +41,6 @@ import io.crate.planner.Merge;
 import io.crate.planner.PlannerContext;
 import io.crate.planner.distribution.DistributionInfo;
 import io.crate.planner.node.dql.GroupByConsumer;
-import io.crate.statistics.ColumnStats;
-import io.crate.statistics.Stats;
 import io.crate.statistics.TableStats;
 
 import javax.annotation.Nullable;
@@ -66,9 +62,11 @@ public class GroupHashAggregate extends ForwardingLogicalPlan {
     static long approximateDistinctValues(long numSourceRows, TableStats tableStats, List<Symbol> groupKeys) {
         long distinctValues = 1;
         int numKeysWithStats = 0;
+        // TODO: Need some kind of stats propagation
+        /*
         for (Symbol groupKey : groupKeys) {
-            while (groupKey instanceof Field) {
-                groupKey = ((Field) groupKey).pointer();
+            while (groupKey instanceof ScopedSymbol) {
+                groupKey = ((ScopedSymbol) groupKey).pointer();
             }
             if (groupKey instanceof Reference) {
                 Reference ref = (Reference) groupKey;
@@ -93,6 +91,7 @@ public class GroupHashAggregate extends ForwardingLogicalPlan {
                 numKeysWithStats++;
             }
         }
+         */
         if (numKeysWithStats == groupKeys.size()) {
             return Math.min(distinctValues, numSourceRows);
         } else {

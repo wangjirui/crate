@@ -24,11 +24,12 @@ package io.crate.testing;
 
 import io.crate.data.Input;
 import io.crate.expression.symbol.Aggregation;
+import io.crate.expression.symbol.AliasSymbol;
 import io.crate.expression.symbol.FetchReference;
-import io.crate.expression.symbol.Field;
 import io.crate.expression.symbol.Function;
 import io.crate.expression.symbol.InputColumn;
 import io.crate.expression.symbol.Literal;
+import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.Reference;
@@ -54,15 +55,15 @@ public class SymbolMatchers {
         return isLiteral(expectedValue, null);
     }
 
-    private static Matcher<Symbol> hasDataType(DataType type) {
+    private static Matcher<Symbol> hasDataType(DataType<?> type) {
         return withFeature(Symbol::valueType, "valueType", equalTo(type));
     }
 
     private static Matcher<Symbol> hasValue(Object expectedValue) {
-        return withFeature(s -> ((Input) s).value(), "value", equalTo(expectedValue));
+        return withFeature(s -> ((Input<?>) s).value(), "value", equalTo(expectedValue));
     }
 
-    public static Matcher<Symbol> isLiteral(Object expectedValue, @Nullable final DataType type) {
+    public static Matcher<Symbol> isLiteral(Object expectedValue, @Nullable final DataType<?> type) {
         if (type == null) {
             return Matchers.allOf(Matchers.instanceOf(Literal.class), hasValue(expectedValue));
         }
@@ -78,34 +79,24 @@ public class SymbolMatchers {
         return isField(expectedName, null);
     }
 
-    public static Matcher<Symbol> isField(final String expectedName, @Nullable final DataType dataType) {
-        var hasExpectedName = withFeature(s -> ((Field) s).path().sqlFqn(), "name", equalTo(expectedName));
+    public static Matcher<Symbol> isField(final String expectedName, @Nullable final DataType<?> dataType) {
+        var hasExpectedName = withFeature(s -> ((ScopedSymbol) s).column().sqlFqn(), "name", equalTo(expectedName));
         if (dataType == null) {
-            return both(Matchers.<Symbol>instanceOf(Field.class)).and(hasExpectedName);
+            return both(Matchers.<Symbol>instanceOf(ScopedSymbol.class)).and(hasExpectedName);
         }
-        return allOf(instanceOf(Field.class), hasExpectedName, hasDataType(dataType));
-    }
-
-    public static Matcher<Symbol> fieldPointsToReferenceOf(final String expectedName,
-                                                           final String expectedRelationName) {
-        java.util.function.Function<Symbol, Symbol> followFieldPointer = s -> {
-            Symbol symbol = s;
-            while (symbol instanceof Field) {
-                symbol = ((Field) symbol).pointer();
-            }
-            return symbol;
-        };
-        return allOf(
-            withFeature(followFieldPointer, "ref", isReference(expectedName)),
-            withFeature(followFieldPointer
-                            .andThen(s -> ((Reference) s).ident().tableIdent().fqn()),
-                        "relationName",
-                        equalTo(expectedRelationName))
-        );
+        return allOf(instanceOf(ScopedSymbol.class), hasExpectedName, hasDataType(dataType));
     }
 
     public static Matcher<Symbol> isFetchRef(int docIdIdx, String ref) {
         return isFetchRef(isInputColumn(docIdIdx), isReference(ref));
+    }
+
+    public static Matcher<Symbol> isAlias(String alias, Matcher<Symbol> childMatcher) {
+        return allOf(
+            Matchers.instanceOf(AliasSymbol.class),
+            withFeature(s -> ((AliasSymbol) s).alias(), "alias", equalTo(alias)),
+            withFeature(s -> ((AliasSymbol) s).symbol(), "child", childMatcher)
+        );
     }
 
     public static Matcher<Symbol> isFetchRef(Matcher<Symbol> fetchIdMatcher, Matcher<Symbol> refMatcher) {
