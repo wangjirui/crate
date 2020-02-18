@@ -330,6 +330,51 @@ public class DDLIntegrationTest extends SQLTransportIntegrationTest {
     }
 
     @Test
+    public void test_create_table_with_check_fail_on_insert() {
+        execute("create table t (id integer primary key, qty integer, constraint check_1 check (qty > 0))");
+        execute("insert into t(id, qty) values(0, null), (1, 1)");
+        refresh();
+        execute("select id, qty from t order by id");
+        assertEquals(2, response.rowCount());
+        Object [][] rows = response.rows();
+        assertEquals(0, rows[0][0]);
+        assertNull(rows[0][1]);
+        assertEquals(1, rows[1][0]);
+        assertEquals(1, rows[1][1]);
+        expectedException.expectMessage(containsString("Failed CONSTRAINT check_1 CHECK (\"qty\" > 0) and values"));
+        execute("insert into t(id, qty) values(2, -1)");
+    }
+
+    @Test
+    public void test_create_table_with_check_fail_on_update() {
+        execute("create table t (id integer primary key, qty integer constraint check_1 check (qty > 0))");
+        execute("insert into t(id, qty) values(0, 1)");
+        refresh();
+        execute("select id, qty from t order by id");
+        assertEquals(1, response.rowCount());
+        Object [][] rows = response.rows();
+        assertEquals(0, rows[0][0]);
+        assertEquals(1, rows[0][1]);
+        execute("update t set qty = 1 where id = 0 returning id, qty");
+        assertEquals(1, response.rowCount());
+        rows = response.rows();
+        assertEquals(0, rows[0][0]);
+        assertEquals(1, rows[0][1]);
+        expectedException.expectMessage(containsString("Failed CONSTRAINT check_1 CHECK (\"qty\" > 0) and values"));
+        execute("update t set qty = -1 where id = 0");
+    }
+
+    @Test
+    public void testCreateTableWithColumnCheck() {
+        expectedException.expectMessage("Failed CONSTRAINT check_1 CHECK (\"qty\" > 100)");
+        execute("create table t (" +
+                "id integer primary key, " +
+                "qty integer constraint check_1 check(qty > 100)" +
+                ")");
+        execute("insert into t(id, qty) values(1, -1)");
+    }
+
+    @Test
     public void testAlterTable() throws Exception {
         execute("create table test (col1 int) with (number_of_replicas='0-all')");
         ensureYellow();

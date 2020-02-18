@@ -63,6 +63,7 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.PrimitiveIterator;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -120,7 +121,16 @@ public class InformationSchemaIterables implements ClusterStateListener {
             .flatMap(r -> sequentialStream(new NotNullConstraintIterable(r)))
             .iterator();
 
-        constraints = () -> concat(sequentialStream(primaryKeyConstraints), sequentialStream(notnullConstraints))
+        Iterable<ConstraintInfo> checkConstraints = () ->
+            sequentialStream(relations)
+            .filter(i -> i != null && !i.checkConstraints().isEmpty())
+            .flatMap(r -> sequentialStream(new CheckConstraintIterable(r)))
+            .iterator();
+
+        constraints = () -> Stream.of(sequentialStream(primaryKeyConstraints),
+                                      sequentialStream(notnullConstraints),
+                                      sequentialStream(checkConstraints))
+            .flatMap(Function.identity())
             .iterator();
 
         partitionInfos = new PartitionInfos(clusterService);
@@ -347,6 +357,43 @@ public class InformationSchemaIterables implements ClusterStateListener {
                 constraintName,
                 ConstraintInfo.Type.CHECK
             );
+        }
+    }
+
+    static class CheckConstraintIterable implements Iterable<ConstraintInfo> {
+
+        private final RelationInfo info;
+
+        CheckConstraintIterable(RelationInfo info) {
+            this.info = info;
+        }
+
+        @Override
+        public Iterator<ConstraintInfo> iterator() {
+            return new CheckConstraintIterator(info);
+        }
+    }
+
+    static class CheckConstraintIterator implements Iterator<ConstraintInfo> {
+        private final RelationInfo info;
+        private final Iterator<String> checkConstraints;
+
+        CheckConstraintIterator(RelationInfo info) {
+            this.info = info;
+            checkConstraints = info.checkConstraints().keySet().iterator();
+        }
+
+        @Override
+        public boolean hasNext() {
+            return checkConstraints.hasNext();
+        }
+
+        @Override
+        public ConstraintInfo next() {
+            if (!hasNext()) {
+                throw new NoSuchElementException("Check constraint iterator exhausted");
+            }
+            return new ConstraintInfo(info, checkConstraints.next(), ConstraintInfo.Type.CHECK);
         }
     }
 

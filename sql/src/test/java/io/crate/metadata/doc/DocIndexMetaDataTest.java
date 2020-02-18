@@ -680,6 +680,27 @@ public class DocIndexMetaDataTest extends CrateDummyClusterServiceUnitTest {
     }
 
     @Test
+    public void testExtractCheckConstraints() throws Exception {
+        XContentBuilder builder = XContentFactory.jsonBuilder()
+            .startObject()
+            .startObject(Constants.DEFAULT_MAPPING_TYPE)
+            .startObject("_meta")
+            .startObject("check_constraints")
+            .field("test3_check_1", "col1 >= 0")
+            .field("test3_check_2", "col2 != 'UNAVAILABLE'")
+            .endObject()
+            .endObject()
+            .endObject()
+            .endObject();
+        IndexMetaData metaData = getIndexMetaData("test3", builder);
+        DocIndexMetaData md = newMeta(metaData, "test3");
+
+        assertThat(md.checkConstraints().size(), is(2));
+        assertThat(md.checkConstraints().get("test3_check_1"), is(SqlParser.createExpression("col1 >= 0")));
+        assertThat(md.checkConstraints().get("test3_check_2"), is(SqlParser.createExpression("col2 != 'UNAVAILABLE'")));
+    }
+
+    @Test
     public void testExtractNoPrimaryKey() throws Exception {
         XContentBuilder builder = XContentFactory.jsonBuilder()
             .startObject()

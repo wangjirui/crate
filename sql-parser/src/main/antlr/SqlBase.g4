@@ -517,6 +517,7 @@ tableElement
     : columnDefinition                                                               #columnDefinitionDefault
     | PRIMARY_KEY columns                                                            #primaryKeyConstraint
     | INDEX name=ident USING method=ident columns withProperties?                    #indexDefinition
+    | checkConstraint                                                                #tableCheckConstraint
     ;
 
 columnDefinition
@@ -559,6 +560,11 @@ columnConstraint
     | INDEX USING method=ident withProperties?                                       #columnIndexConstraint
     | INDEX OFF                                                                      #columnIndexOff
     | STORAGE withProperties                                                         #columnStorageDefinition
+    | checkConstraint                                                                #columnCheckConstraint
+    ;
+
+checkConstraint
+    : (CONSTRAINT name=ident)? CHECK '(' expression=booleanExpression ')'
     ;
 
 withProperties
@@ -829,6 +835,7 @@ INPUT: 'INPUT';
 
 ANALYZE: 'ANALYZE';
 CONSTRAINT: 'CONSTRAINT';
+CHECK: 'CHECK';
 DESCRIBE: 'DESCRIBE';
 EXPLAIN: 'EXPLAIN';
 FORMAT: 'FORMAT';

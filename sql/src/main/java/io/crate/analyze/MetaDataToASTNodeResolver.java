@@ -32,6 +32,7 @@ import io.crate.metadata.Reference;
 import io.crate.metadata.doc.DocTableInfo;
 import io.crate.sql.parser.SqlParser;
 import io.crate.sql.tree.BooleanLiteral;
+import io.crate.sql.tree.CheckConstraint;
 import io.crate.sql.tree.ClusteredBy;
 import io.crate.sql.tree.CollectionColumnType;
 import io.crate.sql.tree.ColumnConstraint;
@@ -99,6 +100,8 @@ public class MetaDataToASTNodeResolver {
             if (pk != null) elements.add(pk);
             // index definitions
             elements.addAll(extractIndexDefinitions());
+            // check constraints
+            elements.addAll(extractCheckConstraints());
             return elements;
         }
 
@@ -200,6 +203,17 @@ public class MetaDataToASTNodeResolver {
                 return new PrimaryKeyConstraint<>(expressionsFromColumns(tableInfo.primaryKey()));
             }
             return null;
+        }
+
+        private List<TableElement<Expression>> extractCheckConstraints() {
+            List<TableElement<Expression>> checkConstraints = new ArrayList<>();
+            if (!tableInfo.checkConstraints().isEmpty()) {
+                for (Map.Entry<String, Expression> entry : tableInfo.checkConstraints().entrySet()) {
+                    checkConstraints.add(new CheckConstraint(
+                        entry.getKey(), entry.getValue()));
+                }
+            }
+            return checkConstraints;
         }
 
         private List<IndexDefinition<Expression>> extractIndexDefinitions() {

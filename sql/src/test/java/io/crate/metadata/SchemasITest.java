@@ -28,6 +28,8 @@ import io.crate.analyze.WhereClause;
 import io.crate.integrationtests.SQLTransportIntegrationTest;
 import io.crate.metadata.doc.DocTableInfo;
 import io.crate.metadata.table.TableInfo;
+import io.crate.sql.parser.SqlParser;
+import io.crate.sql.tree.Expression;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.Randomness;
 import org.elasticsearch.test.ESIntegTestCase;
@@ -59,6 +61,7 @@ public class SchemasITest extends SQLTransportIntegrationTest {
         execute("create table t1 (" +
                 "id int primary key, " +
                 "name string, " +
+                "CONSTRAINT not_miguel CHECK (name != 'miguel'), " +
                 "details object(dynamic) as (size byte, created timestamp with time zone)" +
                 ") clustered into 10 shards with (number_of_replicas=1)");
         ensureYellow();
@@ -70,6 +73,10 @@ public class SchemasITest extends SQLTransportIntegrationTest {
         assertThat(ti.primaryKey().size(), is(1));
         assertThat(ti.primaryKey().get(0), is(new ColumnIdent("id")));
         assertThat(ti.clusteredBy(), is(new ColumnIdent("id")));
+        Map<String, Expression> checkConstraints = ti.checkConstraints();
+        assertEquals(checkConstraints.size(), 1);
+        assertTrue(checkConstraints.containsKey("not_miguel"));
+        assertThat(checkConstraints.get("not_miguel"), is(SqlParser.createExpression("name != 'miguel'")));
 
         ClusterService clusterService = clusterService();
         Routing routing = ti.getRouting(
