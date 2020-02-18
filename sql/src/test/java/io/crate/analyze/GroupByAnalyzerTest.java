@@ -83,16 +83,17 @@ public class GroupByAnalyzerTest extends CrateDummyClusterServiceUnitTest {
     public void testGroupKeyNotInResultColumnList() throws Exception {
         AnalyzedRelation relation = analyze("select count(*) from sys.nodes group by name");
         assertThat(relation.groupBy().size(), is(1));
-        assertThat(Symbols.pathFromSymbol(relation.outputs().get(0)).sqlFqn(), is("count(*)"));
+        assertThat(relation.outputs(), contains(isFunction("count")));
     }
 
     @Test
     public void testGroupByOnAlias() throws Exception {
         AnalyzedRelation relation = analyze("select count(*), name as n from sys.nodes group by n");
         assertThat(relation.groupBy().size(), is(1));
-        assertThat(Symbols.pathFromSymbol(relation.outputs().get(0)).sqlFqn(), is("count(*)"));
-        assertThat(Symbols.pathFromSymbol(relation.outputs().get(1)).sqlFqn(), is("n"));
-
+        assertThat(relation.outputs(), contains(
+            isFunction("count"),
+            isAlias("n", isReference("name"))
+        ));
         assertEquals(relation.groupBy().get(0), relation.outputs().get(1));
     }
 
@@ -405,7 +406,7 @@ public class GroupByAnalyzerTest extends CrateDummyClusterServiceUnitTest {
     @Test
     public void testGroupByHavingComplex() throws Exception {
         AnalyzedRelation relation = analyze("select sum(floats), name from users " +
-                                            "group by name having 1=0 or sum(bytes) in (42, 43, 44) and  name not like 'Slartibart%'");
+                                            "group by name having 1=0 or sum(bytes) in (42, 43, 44) and name not like 'Slartibart%'");
         assertThat(relation.having().hasQuery(), is(true));
         Function andFunction = (Function) relation.having().query();
         assertThat(andFunction, is(notNullValue()));

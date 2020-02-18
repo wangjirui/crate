@@ -134,6 +134,22 @@ public final class GroupAndAggregateSemantics {
         }
 
         @Override
+        public Symbol visitAlias(AliasSymbol aliasSymbol, List<Symbol> groupBy) {
+            /* valid:
+             *      SELECT x AS xx, count(*) FROM tbl GROUP BY xx;
+             *      SELECT x AS xx, count(*) FROM tbl GROUP BY x;
+             *
+             * not valid:
+             *
+             *      SELECT x AS xx, count(*) FROM tbl GROUP BY y;
+             */
+            if (groupBy.contains(aliasSymbol)) {
+                return null;
+            }
+            return aliasSymbol.symbol().accept(this, groupBy);
+        }
+
+        @Override
         public Symbol visitReference(Reference ref, List<Symbol> groupBy) {
             if (groupBy.contains(ref)) {
                 return null;
@@ -142,11 +158,11 @@ public final class GroupAndAggregateSemantics {
         }
 
         @Override
-        public Symbol visitField(Field field, List<Symbol> groupBy) {
-            if (groupBy.contains(field)) {
+        public Symbol visitField(ScopedSymbol symbol, List<Symbol> groupBy) {
+            if (groupBy.contains(symbol)) {
                 return null;
             }
-            return field;
+            return symbol;
         }
 
         @Override

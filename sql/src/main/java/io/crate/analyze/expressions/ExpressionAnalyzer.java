@@ -188,7 +188,7 @@ public class ExpressionAnalyzer {
     public ExpressionAnalyzer(Functions functions,
                               CoordinatorTxnCtx coordinatorTxnCtx,
                               java.util.function.Function<ParameterExpression, Symbol> convertParamFunction,
-                              FieldProvider fieldProvider,
+                              FieldProvider<?> fieldProvider,
                               @Nullable SubqueryAnalyzer subQueryAnalyzer) {
         this(functions, coordinatorTxnCtx, convertParamFunction, fieldProvider, subQueryAnalyzer, Operation.READ);
     }
@@ -196,7 +196,7 @@ public class ExpressionAnalyzer {
     public ExpressionAnalyzer(Functions functions,
                               CoordinatorTxnCtx coordinatorTxnCtx,
                               java.util.function.Function<ParameterExpression, Symbol> convertParamFunction,
-                              FieldProvider fieldProvider,
+                              FieldProvider<?> fieldProvider,
                               @Nullable SubqueryAnalyzer subQueryAnalyzer,
                               Operation operation) {
         this.functions = functions;
