@@ -568,13 +568,13 @@ public class ExpressionAnalyzer {
 
         @Override
         protected Symbol visitCast(Cast node, ExpressionAnalysisContext context) {
-            DataType returnType = DataTypeAnalyzer.convert(node.getType());
+            DataType<?> returnType = DataTypeAnalyzer.convert(node.getType());
             return node.getExpression().accept(this, context).cast(returnType, false);
         }
 
         @Override
         protected Symbol visitTryCast(TryCast node, ExpressionAnalysisContext context) {
-            DataType returnType = DataTypeAnalyzer.convert(node.getType());
+            DataType<?> returnType = DataTypeAnalyzer.convert(node.getType());
 
             if (CastFunctionResolver.supportsExplicitConversion(returnType)) {
                 try {
@@ -987,7 +987,7 @@ public class ExpressionAnalyzer {
 
         @Override
         public Symbol visitMatchPredicate(MatchPredicate node, ExpressionAnalysisContext context) {
-            Map<ScopedSymbol, Symbol> identBoostMap = new HashMap<>(node.idents().size());
+            Map<Symbol, Symbol> identBoostMap = new HashMap<>(node.idents().size());
             DataType<?> columnType = null;
             HashSet<QualifiedName> relationsInColumns = new HashSet<>();
             for (MatchPredicateColumnIdent ident : node.idents()) {
@@ -996,12 +996,13 @@ public class ExpressionAnalyzer {
                     columnType = column.valueType();
                 }
                 Preconditions.checkArgument(
-                    column instanceof ScopedSymbol,
+                    column instanceof ScopedSymbol || column instanceof Reference,
                     SymbolPrinter.format("can only MATCH on columns, not on %s", column));
                 Symbol boost = ident.boost().accept(this, context);
-                ScopedSymbol field = (ScopedSymbol) column;
-                identBoostMap.put(field, boost);
-                relationsInColumns.add(field.relation());
+                identBoostMap.put(column, boost);
+                if (column instanceof ScopedSymbol) {
+                    relationsInColumns.add(((ScopedSymbol) column).relation());
+                }
             }
             if (relationsInColumns.size() > 1) {
                 throw new IllegalArgumentException("Cannot use MATCH predicates on columns of 2 different relations");
@@ -1138,7 +1139,7 @@ public class ExpressionAnalyzer {
         return newFunction;
     }
 
-    private static void verifyTypesForMatch(Iterable<? extends Symbol> columns, DataType columnType) {
+    private static void verifyTypesForMatch(Iterable<? extends Symbol> columns, DataType<?> columnType) {
         Preconditions.checkArgument(
             io.crate.expression.predicate.MatchPredicate.SUPPORTED_TYPES.contains(columnType),
             String.format(Locale.ENGLISH, "Can only use MATCH on columns of type STRING or GEO_SHAPE, not on '%s'", columnType));

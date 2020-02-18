@@ -83,15 +83,15 @@ public abstract class DefaultTraversalSymbolVisitor<C, R> extends SymbolVisitor<
 
     @Override
     public R visitFetchReference(FetchReference fetchReference, C context) {
-        ((Symbol) fetchReference.fetchId()).accept(this, context);
-        ((Symbol) fetchReference.ref()).accept(this, context);
+        fetchReference.fetchId().accept(this, context);
+        fetchReference.ref().accept(this, context);
         return null;
     }
 
     @Override
     public R visitMatchPredicate(MatchPredicate matchPredicate, C context) {
-        for (ScopedSymbol field : matchPredicate.identBoostMap().keySet()) {
-            ((Symbol) field).accept(this, context);
+        for (Symbol field : matchPredicate.identBoostMap().keySet()) {
+            field.accept(this, context);
         }
         return null;
     }

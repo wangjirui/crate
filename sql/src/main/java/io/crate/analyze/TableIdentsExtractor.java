@@ -122,7 +122,7 @@ public class TableIdentsExtractor {
         @Override
         public Collection<RelationName> visitMatchPredicate(MatchPredicate matchPredicate, Void context) {
             Set<RelationName> relationNames = new HashSet<>();
-            for (Map.Entry<ScopedSymbol, Symbol> entry : matchPredicate.identBoostMap().entrySet()) {
+            for (Map.Entry<Symbol, Symbol> entry : matchPredicate.identBoostMap().entrySet()) {
                 relationNames.addAll(entry.getKey().accept(this, context));
                 relationNames.addAll(entry.getValue().accept(this, context));
             }

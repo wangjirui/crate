@@ -106,11 +106,11 @@ public class EvaluatingNormalizer {
         public Symbol visitMatchPredicate(MatchPredicate matchPredicate, TransactionContext context) {
             if (fieldResolver != null) {
                 // Once the fields can be resolved, rewrite matchPredicate to function
-                Map<ScopedSymbol, Symbol> fieldBoostMap = matchPredicate.identBoostMap();
+                Map<Symbol, Symbol> fieldBoostMap = matchPredicate.identBoostMap();
 
                 List<Symbol> columnBoostMapArgs = new ArrayList<>(fieldBoostMap.size() * 2);
-                for (Map.Entry<ScopedSymbol, Symbol> entry : fieldBoostMap.entrySet()) {
-                    Symbol resolved = ((Symbol) entry.getKey()).accept(this, null);
+                for (Map.Entry<Symbol, Symbol> entry : fieldBoostMap.entrySet()) {
+                    Symbol resolved = entry.getKey().accept(this, null);
                     if (resolved instanceof Reference) {
                         columnBoostMapArgs.add(Literal.of(((Reference) resolved).column().fqn()));
                         columnBoostMapArgs.add(entry.getValue());

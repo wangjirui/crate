@@ -52,13 +52,14 @@ public final class FieldReplacer extends FunctionCopyVisitor<Function<? super Sc
     @Override
     public Symbol visitMatchPredicate(MatchPredicate matchPredicate,
                                       Function<? super ScopedSymbol, ? extends Symbol> mapper) {
-        HashMap<ScopedSymbol, Symbol> newIdentBoost = new HashMap<>();
+        HashMap<Symbol, Symbol> newIdentBoost = new HashMap<>();
         for (var entry : matchPredicate.identBoostMap().entrySet()) {
-            Symbol newKey = mapper.apply(entry.getKey());
-            if (newKey instanceof ScopedSymbol) {
+            var key = entry.getKey();
+            if (key instanceof ScopedSymbol) {
+                Symbol newKey = mapper.apply((ScopedSymbol) key);
                 newIdentBoost.put((ScopedSymbol) newKey, entry.getValue().accept(this, mapper));
             } else {
-                newIdentBoost.put(entry.getKey(), entry.getValue().accept(this, mapper));
+                newIdentBoost.put(key, entry.getValue().accept(this, mapper));
             }
         }
         return new MatchPredicate(

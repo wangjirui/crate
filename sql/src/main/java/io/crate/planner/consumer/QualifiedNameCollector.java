@@ -49,8 +49,8 @@ public class QualifiedNameCollector extends DefaultTraversalSymbolVisitor<Set<Qu
 
     @Override
     public Void visitMatchPredicate(MatchPredicate matchPredicate, Set<QualifiedName> context) {
-        for (ScopedSymbol field : matchPredicate.identBoostMap().keySet()) {
-            context.add(field.relation());
+        for (Symbol field : matchPredicate.identBoostMap().keySet()) {
+            field.accept(this, context);
         }
         return null;
     }

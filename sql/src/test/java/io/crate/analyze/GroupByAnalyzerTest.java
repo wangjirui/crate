@@ -27,7 +27,6 @@ import io.crate.analyze.relations.AnalyzedRelation;
 import io.crate.expression.operator.LikeOperators;
 import io.crate.expression.symbol.Function;
 import io.crate.expression.symbol.Symbol;
-import io.crate.expression.symbol.Symbols;
 import io.crate.metadata.Reference;
 import io.crate.metadata.ReferenceIdent;
 import io.crate.test.integration.CrateDummyClusterServiceUnitTest;
@@ -283,7 +282,7 @@ public class GroupByAnalyzerTest extends CrateDummyClusterServiceUnitTest {
                     "  select distinct id from users group by id, name order by 1" +
                     ") t order by 1 desc");
         assertThat(relation, instanceOf(QueriedSelectRelation.class));
-        QueriedSelectRelation<?> outerRelation = (QueriedSelectRelation) relation;
+        QueriedSelectRelation<?> outerRelation = (QueriedSelectRelation<?>) relation;
         assertThat(outerRelation.outputs(), contains(isField("id")));
 
         assertThat(outerRelation.groupBy(), Matchers.empty());

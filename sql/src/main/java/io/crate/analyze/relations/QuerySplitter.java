@@ -135,8 +135,10 @@ public class QuerySplitter {
         @Override
         public Void visitMatchPredicate(MatchPredicate matchPredicate, Context ctx) {
             LinkedHashSet<QualifiedName> relationNames = new LinkedHashSet<>();
-            for (ScopedSymbol field : matchPredicate.identBoostMap().keySet()) {
-                relationNames.add(field.relation());
+            for (Symbol field : matchPredicate.identBoostMap().keySet()) {
+                if (field instanceof ScopedSymbol) {
+                    relationNames.add(((ScopedSymbol) field).relation());
+                }
             }
             ctx.parts.put(relationNames, matchPredicate);
             return null;

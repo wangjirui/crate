@@ -810,7 +810,7 @@ public class TransportSQLActionTest extends SQLTransportIntegrationTest {
         nonExistingColumnSetup();
 
         expectedException.expect(SQLActionException.class);
-        expectedException.expectMessage("Can only use MATCH on columns of type STRING or GEO_SHAPE, not on o['something']");
+        expectedException.expectMessage("Can only use MATCH on columns of type STRING or GEO_SHAPE, not on 'undefined'");
 
         execute("select * from quotes where match(o['something'], 'bla')");
     }
