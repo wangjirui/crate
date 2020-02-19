@@ -46,6 +46,7 @@ import io.crate.expression.scalar.SubscriptFunction;
 import io.crate.expression.scalar.arithmetic.ArithmeticFunctions;
 import io.crate.expression.scalar.geo.DistanceFunction;
 import io.crate.expression.scalar.regex.MatchesFunction;
+import io.crate.expression.symbol.AliasSymbol;
 import io.crate.expression.symbol.Function;
 import io.crate.expression.symbol.Literal;
 import io.crate.expression.symbol.ParameterSymbol;
@@ -1437,7 +1438,7 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
     @Test
     public void testArraySubqueryExpression() throws Exception {
         AnalyzedRelation relation = analyze("select array(select id from sys.shards) as shards_id_array from sys.shards");
-        SelectSymbol arrayProjection = (SelectSymbol) relation.outputs().get(0);
+        SelectSymbol arrayProjection = (SelectSymbol) ((AliasSymbol) relation.outputs().get(0)).symbol();
         assertThat(arrayProjection.getResultType(), is(SelectSymbol.ResultType.SINGLE_COLUMN_MULTIPLE_VALUES));
         assertThat(arrayProjection.valueType().id(), is(ArrayType.ID));
     }
@@ -1508,12 +1509,12 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
     @Test
     public void testSelectWithAliasRenaming() throws Exception {
         AnalyzedRelation relation = analyze("select text as name, name as n from users");
-
-        Symbol text = relation.outputs().get(0);
-        Symbol name = relation.outputs().get(1);
-
-        assertThat(text, isReference("text"));
-        assertThat(name, isReference("name"));
+        assertThat(
+            relation.outputs(),
+            contains(
+                isAlias("name", isReference("text")),
+                isAlias("n", isReference("name"))
+            ));
     }
 
     @Test
@@ -1544,10 +1545,8 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
     public void testOrderByOnAliasWithSameColumnNameInSchema() throws Exception {
         // name exists in the table but isn't selected so not ambiguous
         AnalyzedRelation relation = analyze("select other_id as name from users order by name");
-        assertThat(relation.outputs().get(0), isReference("other_id"));
-        List<Symbol> sortSymbols = relation.orderBy().orderBySymbols();
-        assert sortSymbols != null;
-        assertThat(sortSymbols.get(0), isReference("other_id"));
+        assertThat(relation.outputs(), contains(isAlias("name", isReference("other_id"))));
+        assertThat(relation.orderBy().orderBySymbols(), contains(isAlias("name", isReference("other_id"))));
     }
 
     @Test
@@ -2023,7 +2022,10 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
     @Test
     public void test_record_subscript_syntax_can_be_used_on_object_literals() {
         AnalyzedRelation rel = analyze("select ({x=10}).x");
-        assertThat(rel.outputs(), contains(isLiteral(10L)));
+        assertThat(
+            rel.outputs(),
+            contains(isFunction("subscript_obj", isLiteral(Map.of("x", 10L)), isLiteral("x")))
+        );
     }
 
     @Test
