@@ -95,4 +95,10 @@ public abstract class DefaultTraversalSymbolVisitor<C, R> extends SymbolVisitor<
         }
         return null;
     }
+
+    @Override
+    public R visitAlias(AliasSymbol aliasSymbol, C context) {
+        aliasSymbol.symbol().accept(this, context);
+        return null;
+    }
 }

@@ -40,15 +40,14 @@ import io.crate.expression.operator.OrOperator;
 import io.crate.expression.operator.RegexpMatchOperator;
 import io.crate.expression.operator.any.AnyOperators;
 import io.crate.expression.predicate.IsNullPredicate;
-import io.crate.expression.predicate.MatchPredicate;
 import io.crate.expression.predicate.NotPredicate;
 import io.crate.expression.scalar.SubscriptFunction;
 import io.crate.expression.scalar.arithmetic.ArithmeticFunctions;
 import io.crate.expression.scalar.geo.DistanceFunction;
-import io.crate.expression.scalar.regex.MatchesFunction;
 import io.crate.expression.symbol.AliasSymbol;
 import io.crate.expression.symbol.Function;
 import io.crate.expression.symbol.Literal;
+import io.crate.expression.symbol.MatchPredicate;
 import io.crate.expression.symbol.ParameterSymbol;
 import io.crate.expression.symbol.SelectSymbol;
 import io.crate.expression.symbol.Symbol;
@@ -83,9 +82,11 @@ import static io.crate.testing.SymbolMatchers.isReference;
 import static io.crate.testing.TestingHelpers.isSQL;
 import static io.crate.testing.TestingHelpers.mapToSortedString;
 import static org.hamcrest.Matchers.allOf;
+import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasEntry;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.not;
@@ -922,10 +923,12 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
 
     @Test
     public void testOrderByWithOrdinal() throws Exception {
-        AnalyzedRelation relation = analyze(
+        QueriedSelectRelation<AliasedAnalyzedRelation> relation = analyze(
             "select name from users u order by 1");
-        AnalyzedRelation queriedTable = ((AliasedAnalyzedRelation) relation).relation();
-        assertEquals(queriedTable.outputs().get(0), queriedTable.orderBy().orderBySymbols().get(0));
+        assertThat(
+            relation.outputs(),
+            equalTo(relation.orderBy().orderBySymbols())
+        );
     }
 
     @Test
@@ -1049,54 +1052,38 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
     private void testDistanceOrderBy(String stmt) throws Exception {
         AnalyzedRelation relation = analyze(stmt);
         assertThat(relation.orderBy(), notNullValue());
-        assertThat(((Function) relation.orderBy().orderBySymbols().get(0)).info().ident().name(),
-                   is(DistanceFunction.NAME));
+        assertThat(
+            relation.orderBy().orderBySymbols(),
+            contains(
+                anyOf(
+                    isAlias("distance_to_london", isFunction(DistanceFunction.NAME)),
+                    isFunction(DistanceFunction.NAME)
+                )
+            )
+        );
     }
 
     @Test
     public void testWhereMatchOnColumn() throws Exception {
         AnalyzedRelation relation = analyze("select * from users where match(name, 'Arthur Dent')");
-        Function query = (Function) relation.where().query();
-        assertThat(query.info().ident().name(), is("match"));
-        assertThat(query.arguments().size(), is(4));
-        assertThat(query.arguments().get(0), Matchers.instanceOf(Literal.class));
+        assertThat(relation.where().queryOrFallback(), Matchers.instanceOf(MatchPredicate.class));
+        MatchPredicate matchPredicate = (MatchPredicate) relation.where().query();
 
-        //noinspection unchecked
-        Literal<Map<String, Object>> idents = (Literal<Map<String, Object>>) query.arguments().get(0);
-        assertThat(idents.value().size(), is(1));
-        assertThat(idents.value().get("name"), is(nullValue()));
-
-        assertThat(query.arguments().get(1), Matchers.instanceOf(Literal.class));
-        assertThat(query.arguments().get(1), isLiteral("Arthur Dent", DataTypes.STRING));
-        assertThat(query.arguments().get(2), isLiteral("best_fields", DataTypes.STRING));
-
-        //noinspection unchecked
-        Literal<Map<String, Object>> options = (Literal<Map<String, Object>>) query.arguments().get(3);
-        assertThat(options.value(), Matchers.instanceOf(Map.class));
-        assertThat(options.value().size(), is(0));
+        assertThat(matchPredicate.queryTerm(), isLiteral("Arthur Dent"));
+        assertThat(matchPredicate.identBoostMap(), hasEntry(isReference("name"), isLiteral(null)));
+        assertThat(matchPredicate.matchType(), is("best_fields"));
+        assertThat(matchPredicate.options(), isLiteral(Map.of()));
     }
 
     @Test
     public void testMatchOnIndex() throws Exception {
         AnalyzedRelation relation = analyze("select * from users where match(name_text_ft, 'Arthur Dent')");
-        Function query = (Function) relation.where().query();
-        assertThat(query.info().ident().name(), is("match"));
-        assertThat(query.arguments().size(), is(4));
-        assertThat(query.arguments().get(0), Matchers.instanceOf(Literal.class));
-
-        //noinspection unchecked
-        Literal<Map<String, Object>> idents = (Literal<Map<String, Object>>) query.arguments().get(0);
-        assertThat(idents.value().size(), is(1));
-        assertThat(idents.value().get("name_text_ft"), is(nullValue()));
-
-        assertThat(query.arguments().get(1), Matchers.instanceOf(Literal.class));
-        assertThat(query.arguments().get(1), isLiteral("Arthur Dent", DataTypes.STRING));
-        assertThat(query.arguments().get(2), isLiteral("best_fields", DataTypes.STRING));
-
-        //noinspection unchecked
-        Literal<Map<String, Object>> options = (Literal<Map<String, Object>>) query.arguments().get(3);
-        assertThat(options.value(), Matchers.instanceOf(Map.class));
-        assertThat(options.value().size(), is(0));
+        assertThat(relation.where().queryOrFallback(), instanceOf(MatchPredicate.class));
+        MatchPredicate match = (MatchPredicate) relation.where().queryOrFallback();
+        assertThat(match.identBoostMap(), hasEntry(isReference("name_text_ft"), isLiteral(null)));
+        assertThat(match.queryTerm(), isLiteral("Arthur Dent"));
+        assertThat(match.matchType(), is("best_fields"));
+        assertThat(match.options(), isLiteral(Map.of()));
     }
 
     @Test
@@ -1137,48 +1124,27 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
     @Test
     public void testSelectWhereSimpleMatchPredicate() throws Exception {
         AnalyzedRelation relation = analyze("select * from users where match (text, 'awesome')");
-        assertThat(relation.where().hasQuery(), is(true));
+        assertThat(relation.where().queryOrFallback(), instanceOf(MatchPredicate.class));
+        MatchPredicate query = (MatchPredicate) relation.where().query();
 
-        Function query = (Function) relation.where().query();
-        assertThat(query.info().ident().name(), is(MatchPredicate.NAME));
-        assertThat(query.arguments().size(), is(4));
-        assertThat(query.arguments().get(0), Matchers.instanceOf(Literal.class));
-
-        //noinspection unchecked
-        Literal<Map<String, Object>> idents = (Literal<Map<String, Object>>) query.arguments().get(0);
-        assertThat(idents.value().keySet(), hasItem("text"));
-        assertThat(idents.value().get("text"), is(nullValue()));
-
-        assertThat(query.arguments().get(1), instanceOf(Literal.class));
-        assertThat(query.arguments().get(1), isLiteral("awesome", DataTypes.STRING));
+        assertThat(query.identBoostMap(), hasEntry(isReference("text"), isLiteral(null)));
+        assertThat(query.options(), isLiteral(Map.of()));
+        assertThat(query.queryTerm(), isLiteral("awesome"));
+        assertThat(query.matchType(), is("best_fields"));
     }
 
     @Test
     public void testSelectWhereFullMatchPredicate() throws Exception {
         AnalyzedRelation relation = analyze("select * from users " +
                                             "where match ((name 1.2, text), 'awesome') using best_fields with (analyzer='german')");
-        assertThat(relation.where().hasQuery(), is(true));
-
-        Function query = (Function) relation.where().query();
-        assertThat(query.info().ident().name(), is(MatchPredicate.NAME));
-        assertThat(query.arguments().size(), is(4));
-        assertThat(query.arguments().get(0), Matchers.instanceOf(Literal.class));
-
-        //noinspection unchecked
-        Literal<Map<String, Object>> idents = (Literal<Map<String, Object>>) query.arguments().get(0);
-        assertThat(idents.value().size(), is(2));
-        assertThat(idents.value().get("name"), is(1.2d));
-        assertThat(idents.value().get("text"), is(Matchers.nullValue()));
-
-        assertThat(query.arguments().get(1), isLiteral("awesome", DataTypes.STRING));
-        assertThat(query.arguments().get(2), isLiteral("best_fields", DataTypes.STRING));
-
-        //noinspection unchecked
-        Literal<Map<String, Object>> options = (Literal<Map<String, Object>>) query.arguments().get(3);
-        Map<String, Object> map = options.value();
-        replaceBytesRefWithString(map);
-        assertThat(map.size(), is(1));
-        assertThat(map.get("analyzer"), is("german"));
+        Symbol query = relation.where().queryOrFallback();
+        assertThat(query, instanceOf(MatchPredicate.class));
+        MatchPredicate match = (MatchPredicate) query;
+        assertThat(match.identBoostMap(), hasEntry(isReference("name"), isLiteral(1.2)));
+        assertThat(match.identBoostMap(), hasEntry(isReference("text"), isLiteral(null)));
+        assertThat(match.queryTerm(), isLiteral("awesome"));
+        assertThat(match.matchType(), is("best_fields"));
+        assertThat(match.options(), isLiteral(Map.of("analyzer", "german")));
     }
 
     @Test
@@ -1203,10 +1169,6 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
         analyze("select * from users where o['no_such_column'] is not null");
     }
 
-    private String getMatchType(Function matchFunction) {
-        return (String) ((Literal) matchFunction.arguments().get(2)).value();
-    }
-
     @Test
     public void testWhereMatchAllowedTypes() throws Exception {
         AnalyzedRelation best_fields_relation = analyze("select * from users " +
@@ -1220,11 +1182,11 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
         AnalyzedRelation phrase_prefix_relation = analyze("select * from users " +
                                                           "where match ((name 1.2, text), 'awesome') using phrase_prefix");
 
-        assertThat(getMatchType((Function) best_fields_relation.where().query()), is("best_fields"));
-        assertThat(getMatchType((Function) most_fields_relation.where().query()), is("most_fields"));
-        assertThat(getMatchType((Function) cross_fields_relation.where().query()), is("cross_fields"));
-        assertThat(getMatchType((Function) phrase_relation.where().query()), is("phrase"));
-        assertThat(getMatchType((Function) phrase_prefix_relation.where().query()), is("phrase_prefix"));
+        assertThat(((MatchPredicate) best_fields_relation.where().query()).matchType(), is("best_fields"));
+        assertThat(((MatchPredicate) most_fields_relation.where().query()).matchType(), is("most_fields"));
+        assertThat(((MatchPredicate) cross_fields_relation.where().query()).matchType(), is("cross_fields"));
+        assertThat(((MatchPredicate) phrase_relation.where().query()).matchType(), is("phrase"));
+        assertThat(((MatchPredicate) phrase_prefix_relation.where().query()).matchType(), is("phrase_prefix"));
     }
 
     @Test
@@ -1246,24 +1208,22 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
                                             "  cutoff_frequency=5," +
                                             "  slop=3" +
                                             ")");
-        Function match = (Function) relation.where().query();
-        //noinspection unchecked
-        Map<String, Object> options = ((Literal<Map<String, Object>>) match.arguments().get(3)).value();
-        replaceBytesRefWithString(options);
-        assertThat(mapToSortedString(options),
-            is("analyzer=german, boost=4.6, cutoff_frequency=5, " +
-               "fuzziness=12, fuzzy_rewrite=top_terms_20, max_expansions=3, minimum_should_match=4, " +
-               "operator=or, prefix_length=4, rewrite=constant_score_boolean, slop=3, tie_breaker=0.75, " +
-               "zero_terms_query=all"));
-    }
-
-    private void replaceBytesRefWithString(Map<String, Object> options) {
-        for (Map.Entry<String, Object> entry : options.entrySet()) {
-            Object value = entry.getValue();
-            if (value instanceof BytesRef) {
-                entry.setValue(BytesRefs.toString(value));
-            }
-        }
+        MatchPredicate match = (MatchPredicate) relation.where().query();
+        assertThat(match.options(), isLiteral(Map.ofEntries(
+            Map.entry("analyzer", "german"),
+            Map.entry("boost", 4.6),
+            Map.entry("cutoff_frequency", 5L),
+            Map.entry("fuzziness", 12L),
+            Map.entry("fuzzy_rewrite", "top_terms_20"),
+            Map.entry("max_expansions", 3L),
+            Map.entry("minimum_should_match", 4L),
+            Map.entry("operator", "or"),
+            Map.entry("prefix_length", 4L),
+            Map.entry("rewrite", "constant_score_boolean"),
+            Map.entry("slop", 3L),
+            Map.entry("tie_breaker", 0.75),
+            Map.entry("zero_terms_query", "all")
+        )));
     }
 
     @Test
@@ -1407,18 +1367,25 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
     @Test
     public void testSubscriptArrayOnScalarResult() throws Exception {
         AnalyzedRelation relation = analyze("select regexp_matches(name, '.*')[1] as t_alias from users order by t_alias");
-        assertThat(relation.outputs().get(0), isFunction(SubscriptFunction.NAME));
-        assertThat(relation.orderBy().orderBySymbols().get(0), is(relation.outputs().get(0)));
-        List<Symbol> arguments = ((Function) relation.outputs().get(0)).arguments();
-        assertThat(arguments.size(), is(2));
-
-        assertThat(arguments.get(0), isFunction(MatchesFunction.NAME));
-        assertThat(arguments.get(1), isLiteral(1L));
-
-        List<Symbol> scalarArguments = ((Function) arguments.get(0)).arguments();
-        assertThat(scalarArguments.size(), is(2));
-        assertThat(scalarArguments.get(0), isReference("name"));
-        assertThat(scalarArguments.get(1), isLiteral(".*", DataTypes.STRING));
+        assertThat(
+            relation.outputs(),
+            contains(
+                isAlias(
+                    "t_alias",
+                    isFunction(
+                        SubscriptFunction.NAME,
+                        isFunction("regexp_matches", isReference("name"), isLiteral(".*")),
+                        isLiteral(1L)
+                    )
+                )
+            )
+        );
+        assertThat(
+            relation.orderBy().orderBySymbols(),
+            contains(
+                isAlias("t_alias", isFunction(SubscriptFunction.NAME))
+            )
+        );
     }
 
     @Test
@@ -1592,9 +1559,12 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
     @Test
     public void selectCurrentTimeStamp() {
         AnalyzedRelation relation = analyze("select CURRENT_TIMESTAMP from sys.cluster");
-        Symbol currentTime = relation.outputs().get(0);
-        assertThat(currentTime, instanceOf(Literal.class));
-        assertThat(currentTime.valueType(), is(DataTypes.TIMESTAMPZ));
+        assertThat(
+            relation.outputs(),
+            contains(
+                isFunction("current_timestamp", isLiteral(3))
+            )
+        );
     }
 
     @Test
@@ -1728,14 +1698,14 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
     public void testSelectMatchOnGeoShape() throws Exception {
         AnalyzedRelation relation = analyze(
             "select * from users where match(shape, 'POLYGON ((30 10, 40 40, 20 40, 10 20, 30 10))')");
-        assertThat(relation.where().query(), isFunction("match"));
+        assertThat(relation.where().query(), Matchers.instanceOf(MatchPredicate.class));
     }
 
     @Test
     public void testSelectMatchOnGeoShapeObjectLiteral() throws Exception {
         AnalyzedRelation relation = analyze(
             "select * from users where match(shape, {type='Polygon', coordinates=[[[30, 10], [40, 40], [20, 40], [10, 20], [30, 10]]]})");
-        assertThat(relation.where().query(), isFunction("match"));
+        assertThat(relation.where().query(), Matchers.instanceOf(MatchPredicate.class));
     }
 
     @Test

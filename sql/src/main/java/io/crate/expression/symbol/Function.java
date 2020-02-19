@@ -47,6 +47,16 @@ public class Function extends Symbol implements Cloneable {
     @Nullable
     private final Symbol filter;
 
+    public static Function of(String name, List<Symbol> arguments, DataType<?> returnType) {
+        return new Function(
+            new FunctionInfo(
+                new FunctionIdent(name, Symbols.typeView(arguments)),
+                returnType
+            ),
+            arguments
+        );
+    }
+
     public Function(StreamInput in) throws IOException {
         info = new FunctionInfo(in);
         if (in.getVersion().onOrAfter(Version.V_4_1_0)) {

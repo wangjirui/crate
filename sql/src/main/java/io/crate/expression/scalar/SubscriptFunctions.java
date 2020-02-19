@@ -21,23 +21,40 @@
 
 package io.crate.expression.scalar;
 
-import java.util.List;
-
-import javax.annotation.Nullable;
-
 import io.crate.common.collections.Lists2;
 import io.crate.expression.symbol.Function;
 import io.crate.expression.symbol.Literal;
 import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.Symbols;
+import io.crate.expression.symbol.format.SymbolPrinter;
 import io.crate.metadata.FunctionIdent;
 import io.crate.metadata.FunctionInfo;
+import io.crate.types.ArrayType;
 import io.crate.types.DataType;
 import io.crate.types.DataTypes;
 import io.crate.types.ObjectType;
 import io.crate.types.RowType;
 
+import javax.annotation.Nullable;
+import java.util.List;
+
 public final class SubscriptFunctions {
+
+    public static Function createSubscript(Symbol baseSymbol, Symbol index) {
+        DataType<?> baseType = baseSymbol.valueType();
+        switch (baseType.id()) {
+            case ObjectType.ID:
+                return objectSubscript(List.of(baseSymbol, index), DataTypes.UNDEFINED);
+
+            case ArrayType.ID:
+                return Function.of(SubscriptFunction.NAME, List.of(baseSymbol, index), ((ArrayType<?>) baseType).innerType());
+
+            default:
+                throw new UnsupportedOperationException(
+                    "Object subscript syntax is only valid on expressions of type `object` or `array`. " +
+                    "Expression `" + SymbolPrinter.INSTANCE.printUnqualified(baseSymbol) + "` has type `" + baseType.getName() + "`");
+        }
+    }
 
     @Nullable
     public static Function tryCreateSubscript(Symbol baseSymbol, List<String> path) {
@@ -48,10 +65,7 @@ public final class SubscriptFunctions {
             case ObjectType.ID: {
                 List<Symbol> arguments = Lists2.mapTail(baseSymbol, path, Literal::of);
                 DataType<?> returnType = ((ObjectType) baseType).resolveInnerType(path);
-                return new Function(
-                    new FunctionInfo(new FunctionIdent(SubscriptObjectFunction.NAME, Symbols.typeView(arguments)), returnType),
-                    arguments
-                );
+                return objectSubscript(arguments, returnType);
             }
 
             case RowType.ID: {
@@ -77,5 +91,12 @@ public final class SubscriptFunctions {
             default:
                 return null;
         }
+    }
+
+    private static Function objectSubscript(List<Symbol> arguments, DataType<?> returnType) {
+        return new Function(
+            new FunctionInfo(new FunctionIdent(SubscriptObjectFunction.NAME, Symbols.typeView(arguments)), returnType),
+            arguments
+        );
     }
 }

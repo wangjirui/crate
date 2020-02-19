@@ -86,7 +86,7 @@ public class ExpressionToColumnIdentVisitor extends AstVisitor<ColumnIdent, List
         if (context == null) {
             context = new ArrayList<>();
         }
-        ColumnIdent colIdent = node.name().accept(this, context);
+        ColumnIdent colIdent = node.base().accept(this, context);
         node.index().accept(this, context);
 
 

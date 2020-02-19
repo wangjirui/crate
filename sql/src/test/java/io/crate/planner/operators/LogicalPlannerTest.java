@@ -151,11 +151,11 @@ public class LogicalPlannerTest extends CrateDummyClusterServiceUnitTest {
     @Test
     public void testHavingGlobalAggregationAndRelationAlias() throws Exception {
         LogicalPlan plan = plan("select min(a), min(x) from t1 as tt having min(tt.x) < 33 and max(tt.x) > 100");
-        assertThat(plan, isPlan("Boundary[\"min(a)\", \"min(x)\"]\n" +
-                                "Eval[min(a), min(x)]\n" +
+        assertThat(plan, isPlan("Eval[min(a), min(x)]\n" +
                                 "Filter[((min(x) < 33) AND (max(x) > 100))]\n" +
                                 "Aggregate[min(a), min(x), max(x)]\n" +
-                                "Collect[doc.t1 | [a, x] | true]\n"));
+                                "Rename[a, x, i] AS tt\n" +
+                                "Collect[doc.t1 | [a, x, i] | true]\n"));
     }
 
     @Test

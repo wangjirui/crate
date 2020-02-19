@@ -80,4 +80,32 @@ public final class ScopedSymbol extends Symbol {
     public String representation() {
         return relation.toString() + '.' + column.sqlFqn();
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        ScopedSymbol that = (ScopedSymbol) o;
+
+        if (!relation.equals(that.relation)) {
+            return false;
+        }
+        if (!column.equals(that.column)) {
+            return false;
+        }
+        return dataType.equals(that.dataType);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = relation.hashCode();
+        result = 31 * result + column.hashCode();
+        result = 31 * result + dataType.hashCode();
+        return result;
+    }
 }

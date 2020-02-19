@@ -24,6 +24,7 @@ package io.crate.execution.dsl.projection.builder;
 import com.google.common.base.MoreObjects;
 import io.crate.expression.scalar.SubscriptObjectFunction;
 import io.crate.expression.symbol.Aggregation;
+import io.crate.expression.symbol.AliasSymbol;
 import io.crate.expression.symbol.DefaultTraversalSymbolVisitor;
 import io.crate.expression.symbol.FetchReference;
 import io.crate.expression.symbol.Function;
@@ -202,6 +203,19 @@ public final class InputColumns extends DefaultTraversalSymbolVisitor<InputColum
         InputColumn inputColumn = sourceSymbols.inputs.get(symbol);
         if (inputColumn == null) {
             throw new IllegalArgumentException("Couldn't find " + symbol + " in " + sourceSymbols);
+        }
+        return inputColumn;
+    }
+
+    @Override
+    public Symbol visitAlias(AliasSymbol aliasSymbol, SourceSymbols sourceSymbols) {
+        InputColumn inputColumn = sourceSymbols.inputs.get(aliasSymbol);
+        if (inputColumn == null) {
+            InputColumn column = sourceSymbols.inputs.get(aliasSymbol.symbol());
+            if (column == null) {
+                throw new IllegalArgumentException("Couldn't find " + column + " in " + sourceSymbols);
+            }
+            return column;
         }
         return inputColumn;
     }

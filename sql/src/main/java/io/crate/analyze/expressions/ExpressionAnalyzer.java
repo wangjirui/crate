@@ -463,7 +463,7 @@ public class ExpressionAnalyzer {
             if (!node.getType().equals(CurrentTime.Type.TIMESTAMP)) {
                 visitExpression(node, context);
             }
-            List<Symbol> args = Lists.newArrayList(
+            List<Symbol> args = List.of(
                 Literal.of(node.getPrecision().orElse(CurrentTimestampFunction.DEFAULT_PRECISION))
             );
             return allocateFunction(CurrentTimestampFunction.NAME, args, context);
@@ -647,19 +647,15 @@ public class ExpressionAnalyzer {
 
         @Override
         protected Symbol visitSubscriptExpression(SubscriptExpression node, ExpressionAnalysisContext context) {
-            return resolveSubscriptSymbol(node, context);
-        }
-
-        Symbol resolveSubscriptSymbol(SubscriptExpression subscript, ExpressionAnalysisContext context) {
             SubscriptContext subscriptContext = new SubscriptContext();
-            SubscriptValidator.validate(subscript, subscriptContext);
+            SubscriptValidator.validate(node, subscriptContext);
             QualifiedName qualifiedName = subscriptContext.qualifiedName();
             List<String> parts = subscriptContext.parts();
 
             if (qualifiedName == null) {
                 if (parts == null || parts.isEmpty()) {
-                    Symbol name = subscript.name().accept(this, context);
-                    Symbol index = subscript.index().accept(this, context);
+                    Symbol name = node.base().accept(this, context);
+                    Symbol index = node.index().accept(this, context);
                     return createSubscript(name, index, context);
                 } else {
                     Symbol name = subscriptContext.expression().accept(this, context);

@@ -39,6 +39,7 @@ import io.crate.analyze.relations.select.SelectAnalyzer;
 import io.crate.analyze.validator.GroupBySymbolValidator;
 import io.crate.analyze.validator.HavingSymbolValidator;
 import io.crate.analyze.validator.SemanticSortValidator;
+import io.crate.analyze.where.WhereClauseValidator;
 import io.crate.common.collections.Lists2;
 import io.crate.exceptions.AmbiguousColumnAliasException;
 import io.crate.exceptions.ColumnUnknownException;
@@ -336,6 +337,7 @@ public class RelationAnalyzer extends DefaultTraversalVisitor<AnalyzedRelation, 
         boolean isDistinct = node.getSelect().isDistinct();
         Symbol querySymbol = expressionAnalyzer.generateQuerySymbol(node.getWhere(), expressionAnalysisContext);
         WhereClause whereClause = new WhereClause(querySymbol);
+        WhereClauseValidator.validate(whereClause.queryOrFallback());
         QuerySpec querySpec = new QuerySpec(
             selectAnalysis.outputSymbols(),
             whereClause,

@@ -213,7 +213,7 @@ public final class ExpressionFormatter {
 
         @Override
         protected String visitSubscriptExpression(SubscriptExpression node, @Nullable List<Expression> parameters) {
-            return node.name() + "[" + node.index() + "]";
+            return node.base() + "[" + node.index() + "]";
         }
 
         @Override

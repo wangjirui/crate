@@ -57,7 +57,7 @@ public final class SubscriptValidator {
         @Override
         protected Void visitSubscriptExpression(SubscriptExpression node, SubscriptContext context) {
             node.index().accept(SubscriptIndexVisitor.INSTANCE, context);
-            node.name().accept(this, context);
+            node.base().accept(this, context);
             return null;
         }
 
@@ -134,7 +134,7 @@ public final class SubscriptValidator {
                     String.format(Locale.ENGLISH, "Array index must be in range 1 to %s",
                         MAX_VALUE));
             }
-            context.index(new Cast(node, new ColumnType("integer")));
+            context.index(new Cast(node, new ColumnType<>("integer")));
             return null;
         }
 

@@ -59,13 +59,13 @@ public class AliasedAnalyzedRelation implements AnalyzedRelation, FieldResolver 
         this.outputs = new ArrayList<>(relation.outputs().size());
         for (int i = 0; i < relation.outputs().size(); i++) {
             Symbol childOutput = relation.outputs().get(i);
-            ScopedSymbol scopedSymbol = new ScopedSymbol(
-                qualifiedName, Symbols.pathFromSymbol(childOutput), childOutput.valueType());
+            ColumnIdent childColumn = Symbols.pathFromSymbol(childOutput);
             if (i < columnAliases.size()) {
-                String alias = columnAliases.get(i);
-                outputs.add(new AliasSymbol(alias, scopedSymbol));
+                ColumnIdent alias = new ColumnIdent(columnAliases.get(i));
+                aliasToColumnMapping.put(alias, childColumn);
+                outputs.add(new ScopedSymbol(qualifiedName, alias, childOutput.valueType()));
             } else {
-                outputs.add(scopedSymbol);
+                outputs.add(new ScopedSymbol(qualifiedName, childColumn, childOutput.valueType()));
             }
         }
     }
@@ -77,7 +77,8 @@ public class AliasedAnalyzedRelation implements AnalyzedRelation, FieldResolver 
     @Override
     public Symbol getField(ColumnIdent path, Operation operation) throws UnsupportedOperationException, ColumnUnknownException {
         for (Symbol output : outputs) {
-            if (Symbols.pathFromSymbol(output).equals(path)) {
+            ColumnIdent outputName = Symbols.pathFromSymbol(output);
+            if (outputName.equals(path)) {
                 return output;
             }
             if (output instanceof AliasSymbol) {
