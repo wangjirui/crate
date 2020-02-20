@@ -29,12 +29,15 @@ import io.crate.analyze.MultiSourceSelect;
 import io.crate.analyze.OrderBy;
 import io.crate.analyze.QueriedSelectRelation;
 import io.crate.analyze.WhereClause;
-import io.crate.analyze.relations.AbstractTableRelation;
 import io.crate.analyze.relations.AliasedAnalyzedRelation;
 import io.crate.analyze.relations.AnalyzedRelation;
+import io.crate.analyze.relations.AnalyzedRelationVisitor;
 import io.crate.analyze.relations.AnalyzedView;
+import io.crate.analyze.relations.DocTableRelation;
 import io.crate.analyze.relations.TableFunctionRelation;
+import io.crate.analyze.relations.TableRelation;
 import io.crate.analyze.relations.UnionSelect;
+import io.crate.common.collections.Lists2;
 import io.crate.data.Row;
 import io.crate.data.RowConsumer;
 import io.crate.execution.MultiPhaseExecutor;
@@ -42,6 +45,7 @@ import io.crate.execution.dsl.phases.NodeOperationTree;
 import io.crate.execution.dsl.projection.builder.SplitPoints;
 import io.crate.execution.dsl.projection.builder.SplitPointsBuilder;
 import io.crate.execution.engine.NodeOperationTreeGenerator;
+import io.crate.expression.symbol.FieldReplacer;
 import io.crate.expression.symbol.FieldsVisitor;
 import io.crate.expression.symbol.Function;
 import io.crate.expression.symbol.Literal;
@@ -217,53 +221,205 @@ public class LogicalPlanner {
                             Set<PlanHint> hints,
                             TableStats tableStats,
                             Row params) {
-        SplitPoints splitPoints = SplitPointsBuilder.create(relation);
-        return MultiPhase.createIfNeeded(
-            Eval.create(
-                Limit.create(
-                    Order.create(
-                        Distinct.create(
-                            ProjectSet.create(
-                                WindowAgg.create(
-                                    Filter.create(
-                                        groupByOrAggregate(
-                                            collectAndFilter(
-                                                relation,
-                                                splitPoints.toCollect(),
-                                                relation.where(),
-                                                subqueryPlanner,
-                                                functions,
-                                                txnCtx,
-                                                hints,
-                                                tableStats,
-                                                params
-                                            ),
-                                            relation.groupBy(),
-                                            splitPoints.aggregates(),
-                                            tableStats
-                                        ),
-                                        relation.having()
-                                    ),
-                                    splitPoints.windowFunctions()
-                                ),
-                                splitPoints.tableFunctions()
-                            ),
-                            relation.isDistinct(),
-                            relation.outputs(),
-                            tableStats
-                        ),
-                        relation.orderBy()
-                    ),
-                    relation.limit(),
-                    relation.offset()
-                ),
-                relation.outputs()
-            ),
-            relation,
-            subqueryPlanner
+        // TODO: With this change we could probably also follow up on trimming the AnalyzedRelation
+        // it would only contain `outputs` and the other properties would only be available
+        // in the specific implementations
+        var planBuilder = new PlanBuilder(
+            subqueryPlanner,
+            functions,
+            txnCtx,
+            hints,
+            tableStats,
+            params
+        );
+        return relation.accept(
+            planBuilder,
+            new PlanBuilderContext(relation.outputs(), WhereClause.MATCH_ALL)
         );
     }
 
+    static class PlanBuilderContext {
+
+        final List<Symbol> toCollect;
+        final WhereClause whereClause;
+
+        // used to pass on splitPoints.toCollect and whereClause from QueriedSelectRelation to the child
+        // We could also not do that and instead rely on optimization rules
+        // - Collect operator would default to outputs of the TableRelation; would need column pruning rule
+        // - WhereClause would be added as filter initially and would be pushed into Collect via rule
+        public PlanBuilderContext(List<Symbol> toCollect, WhereClause whereClause) {
+            this.toCollect = toCollect;
+            this.whereClause = whereClause;
+        }
+    }
+
+
+    static class PlanBuilder extends AnalyzedRelationVisitor<PlanBuilderContext, LogicalPlan> {
+
+        private final SubqueryPlanner subqueryPlanner;
+        private final Functions functions;
+        private final CoordinatorTxnCtx txnCtx;
+        private final Set<PlanHint> hints;
+        private final TableStats tableStats;
+        private final Row params;
+
+        private PlanBuilder(SubqueryPlanner subqueryPlanner,
+                            Functions functions,
+                            CoordinatorTxnCtx txnCtx,
+                            Set<PlanHint> hints,
+                            TableStats tableStats,
+                            Row params) {
+            this.subqueryPlanner = subqueryPlanner;
+            this.functions = functions;
+            this.txnCtx = txnCtx;
+            this.hints = hints;
+            this.tableStats = tableStats;
+            this.params = params;
+        }
+
+        @Override
+        public LogicalPlan visitAnalyzedRelation(AnalyzedRelation relation, PlanBuilderContext context) {
+            throw new UnsupportedOperationException(relation.getClass().getSimpleName() + " NYI");
+        }
+
+        @Override
+        public LogicalPlan visitTableFunctionRelation(TableFunctionRelation relation, PlanBuilderContext context) {
+            return TableFunction.create(relation, context.toCollect, context.whereClause);
+        }
+
+        @Override
+        public LogicalPlan visitDocTableRelation(DocTableRelation relation, PlanBuilderContext context) {
+            return Collect.create(relation, context.toCollect, context.whereClause, hints, tableStats, params);
+        }
+
+        @Override
+        public LogicalPlan visitTableRelation(TableRelation relation, PlanBuilderContext context) {
+            return Collect.create(relation, context.toCollect, context.whereClause, hints, tableStats, params);
+        }
+
+        @Override
+        public LogicalPlan visitAliasedAnalyzedRelation(AliasedAnalyzedRelation relation, PlanBuilderContext context) {
+            var child = relation.relation();
+            // required remap here might be an indication that we should remove the PlanBuilderContext
+            // and settle for optimization rules
+            var remapScopedSymbols = FieldReplacer.bind(relation::resolveField);
+            var newCtx = new PlanBuilderContext(
+                Lists2.map(context.toCollect, remapScopedSymbols),
+                context.whereClause.map(remapScopedSymbols)
+            );
+            var source = child.accept(this, newCtx);
+            return new Rename(context.toCollect, relation.getQualifiedName(), source);
+        }
+
+        @Override
+        public LogicalPlan visitView(AnalyzedView view, PlanBuilderContext context) {
+            // TODO: add scoping to view and then inject rename operator here
+            return view.relation().accept(this, context);
+        }
+
+        @Override
+        public LogicalPlan visitUnionSelect(UnionSelect union, PlanBuilderContext context) {
+            var lhsRel = union.left();
+            var rhsRel = union.right();
+            return new Union(
+                lhsRel.accept(this, new PlanBuilderContext(lhsRel.outputs(), lhsRel.where())),
+                rhsRel.accept(this, new PlanBuilderContext(rhsRel.outputs(), rhsRel.where())),
+                union.outputs()
+            );
+        }
+
+        public LogicalPlan visitMultiSourceSelect(MultiSourceSelect mss, PlanBuilderContext context) {
+            SplitPoints splitPoints = SplitPointsBuilder.create(mss);
+            // TODO: could we merge MultiSourceSelect with QueriedSelectRelation?
+            // TODO: use split points
+            // var newCtx = new PlanBuilderContext(splitPoints.toCollect(), mss.where());
+            var source = JoinPlanBuilder.createNodes(
+                mss,
+                mss.where(),
+                subqueryPlanner,
+                functions,
+                txnCtx,
+                hints,
+                tableStats,
+                params
+            );
+            return MultiPhase.createIfNeeded(
+                Eval.create(
+                    Limit.create(
+                        Order.create(
+                            Distinct.create(
+                                ProjectSet.create(
+                                    WindowAgg.create(
+                                        Filter.create(
+                                            groupByOrAggregate(
+                                                source,
+                                                mss.groupBy(),
+                                                splitPoints.aggregates(),
+                                                tableStats
+                                            ),
+                                            mss.having()
+                                        ),
+                                        splitPoints.windowFunctions()
+                                    ),
+                                    splitPoints.tableFunctions()
+                                ),
+                                mss.isDistinct(),
+                                mss.outputs(),
+                                tableStats
+                            ),
+                            mss.orderBy()
+                        ),
+                        mss.limit(),
+                        mss.offset()
+                    ),
+                    mss.outputs()
+                ),
+                mss,
+                subqueryPlanner
+            );
+        }
+
+        @Override
+        public LogicalPlan visitQueriedSelectRelation(QueriedSelectRelation<?> relation, PlanBuilderContext context) {
+            SplitPoints splitPoints = SplitPointsBuilder.create(relation);
+            var newCtx = new PlanBuilderContext(splitPoints.toCollect(), relation.where());
+            LogicalPlan source = relation.subRelation().accept(this, newCtx);
+            return MultiPhase.createIfNeeded(
+                Eval.create(
+                    Limit.create(
+                        Order.create(
+                            Distinct.create(
+                                ProjectSet.create(
+                                    WindowAgg.create(
+                                        Filter.create(
+                                            groupByOrAggregate(
+                                                source,
+                                                relation.groupBy(),
+                                                splitPoints.aggregates(),
+                                                tableStats
+                                            ),
+                                            relation.having()
+                                        ),
+                                        splitPoints.windowFunctions()
+                                    ),
+                                    splitPoints.tableFunctions()
+                                ),
+                                relation.isDistinct(),
+                                relation.outputs(),
+                                tableStats
+                            ),
+                            relation.orderBy()
+                        ),
+                        relation.limit(),
+                        relation.offset()
+                    ),
+                    relation.outputs()
+                ),
+                relation,
+                subqueryPlanner
+            );
+        }
+    }
 
     private static LogicalPlan groupByOrAggregate(LogicalPlan source,
                                                   List<Symbol> groupKeys,
@@ -277,79 +433,6 @@ public class LogicalPlanner {
             return new HashAggregate(source, aggregates);
         }
         return source;
-    }
-
-    private static LogicalPlan collectAndFilter(AnalyzedRelation analyzedRelation,
-                                                List<Symbol> toCollect,
-                                                WhereClause where,
-                                                SubqueryPlanner subqueryPlanner,
-                                                Functions functions,
-                                                CoordinatorTxnCtx txnCtx,
-                                                Set<PlanHint> hints,
-                                                TableStats tableStats,
-                                                Row params) {
-        // TODO: must not swallow `toCollect` here
-        if (analyzedRelation instanceof AnalyzedView) {
-            return plan(((AnalyzedView) analyzedRelation).relation(),
-                        subqueryPlanner,
-                        functions,
-                        txnCtx,
-                        hints,
-                        tableStats,
-                        params);
-        }
-        if (analyzedRelation instanceof AliasedAnalyzedRelation) {
-            AliasedAnalyzedRelation relation = (AliasedAnalyzedRelation) analyzedRelation;
-            // TODO: what about `toCollect`?
-            return new Rename(
-                relation.outputs(),
-                relation.getQualifiedName(),
-                plan(
-                    relation.relation(),
-                    subqueryPlanner,
-                    functions,
-                    txnCtx,
-                    hints,
-                    tableStats,
-                    params
-                )
-            );
-        }
-        if (analyzedRelation instanceof AbstractTableRelation) {
-            return Collect.create(((AbstractTableRelation<?>) analyzedRelation), toCollect, where, hints, tableStats, params);
-        }
-        if (analyzedRelation instanceof MultiSourceSelect) {
-            return JoinPlanBuilder.createNodes(
-                (MultiSourceSelect) analyzedRelation,
-                where,
-                subqueryPlanner,
-                functions,
-                txnCtx,
-                hints,
-                tableStats,
-                params
-            );
-        }
-        if (analyzedRelation instanceof UnionSelect) {
-            return Union.create((UnionSelect) analyzedRelation, subqueryPlanner, functions, txnCtx, hints, tableStats, params);
-        }
-        if (analyzedRelation instanceof TableFunctionRelation) {
-            return TableFunction.create(((TableFunctionRelation) analyzedRelation), toCollect, where);
-        }
-        if (analyzedRelation instanceof QueriedSelectRelation) {
-            QueriedSelectRelation<?> selectRelation = (QueriedSelectRelation<?>) analyzedRelation;
-            AnalyzedRelation subRelation = selectRelation.subRelation();
-            if (subRelation instanceof AbstractTableRelation<?>) {
-                return Collect.create(((AbstractTableRelation<?>) subRelation), toCollect, where, hints, tableStats, params);
-            } else if (subRelation instanceof TableFunctionRelation) {
-                return TableFunction.create(((TableFunctionRelation) subRelation), toCollect, where);
-            }
-            return Filter.create(
-                plan(subRelation, subqueryPlanner, functions, txnCtx, hints, tableStats, params),
-                where
-            );
-        }
-        throw new UnsupportedOperationException("Cannot create LogicalPlan from: " + analyzedRelation);
     }
 
     public static Set<Symbol> extractColumns(Symbol symbol) {
