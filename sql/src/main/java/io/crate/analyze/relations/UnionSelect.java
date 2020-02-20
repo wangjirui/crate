@@ -22,25 +22,21 @@
 
 package io.crate.analyze.relations;
 
-import io.crate.analyze.Fields;
 import io.crate.analyze.HavingClause;
 import io.crate.analyze.OrderBy;
 import io.crate.analyze.WhereClause;
-import io.crate.exceptions.ColumnUnknownException;
 import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.Symbols;
-import io.crate.metadata.ColumnIdent;
-import io.crate.metadata.table.Operation;
 import io.crate.sql.tree.QualifiedName;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.ArrayList;
 import java.util.List;
 
 public class UnionSelect implements AnalyzedRelation {
 
-    private final Fields fields;
     private final AnalyzedRelation left;
     private final AnalyzedRelation right;
     private final List<Symbol> outputs;
@@ -52,16 +48,16 @@ public class UnionSelect implements AnalyzedRelation {
         this.name = left.getQualifiedName();
 
         List<Symbol> fieldsFromLeft = left.outputs();
-        fields = new Fields(fieldsFromLeft.size());
+        ArrayList<Symbol> outputs = new ArrayList<>(fieldsFromLeft.size());
         for (Symbol field : fieldsFromLeft) {
             // Creating a field that points to the field of the left relation isn't 100% accurate.
             // We're pointing to *two* symbols (both left AND right).
             // We could either use a `InputColumn` to do that (by pointing to a position) - (but might be confusing to have InputColumns in the analysis already)
             // Or introduce a `UnionSymbol` or `UnionField` which would take two symbols it is pointing to
             // Since this currently has no effect we go with the left symbol until there is a good reason to change it.
-            fields.add(new ScopedSymbol(name, Symbols.pathFromSymbol(field), field.valueType()));
+            outputs.add(new ScopedSymbol(name, Symbols.pathFromSymbol(field), field.valueType()));
         }
-        this.outputs = List.copyOf(fields.asList());
+        this.outputs = List.copyOf(outputs);
     }
 
     public AnalyzedRelation left() {
@@ -75,14 +71,6 @@ public class UnionSelect implements AnalyzedRelation {
     @Override
     public <C, R> R accept(AnalyzedRelationVisitor<C, R> visitor, C context) {
         return visitor.visitUnionSelect(this, context);
-    }
-
-    @Override
-    public Symbol getField(ColumnIdent path, Operation operation) throws UnsupportedOperationException, ColumnUnknownException {
-        if (operation != Operation.READ) {
-            throw new UnsupportedOperationException("getField on MultiSourceSelect is only supported for READ operations");
-        }
-        return fields.getWithSubscriptFallback(path, this, left);
     }
 
     @Override

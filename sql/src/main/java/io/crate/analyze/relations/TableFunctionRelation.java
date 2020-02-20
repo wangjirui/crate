@@ -25,12 +25,10 @@ package io.crate.analyze.relations;
 import io.crate.analyze.HavingClause;
 import io.crate.analyze.OrderBy;
 import io.crate.analyze.WhereClause;
-import io.crate.exceptions.ColumnUnknownException;
 import io.crate.expression.symbol.Function;
 import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.format.SymbolPrinter;
-import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.FunctionName;
 import io.crate.metadata.Reference;
 import io.crate.metadata.ReferenceIdent;
@@ -87,19 +85,6 @@ public class TableFunctionRelation implements AnalyzedRelation, FieldResolver {
     @Override
     public <C, R> R accept(AnalyzedRelationVisitor<C, R> visitor, C context) {
         return visitor.visitTableFunctionRelation(this, context);
-    }
-
-    @Override
-    public Reference getField(ColumnIdent path, Operation operation) throws UnsupportedOperationException, ColumnUnknownException {
-        if (operation == Operation.READ) {
-            for (Reference output : outputs) {
-                if (output.column().equals(path)) {
-                    return output;
-                }
-            }
-            return null;
-        }
-        throw new UnsupportedOperationException("Table functions don't support write operations");
     }
 
     @Override

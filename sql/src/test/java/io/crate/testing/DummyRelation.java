@@ -59,9 +59,9 @@ public class DummyRelation implements AnalyzedRelation {
     }
 
     @Override
-    public ScopedSymbol getField(ColumnIdent path, Operation operation) throws UnsupportedOperationException {
-        if (columnReferences.contains(path)) {
-            return new ScopedSymbol(name, path, DataTypes.STRING);
+    public ScopedSymbol getField(ColumnIdent column, Operation operation) throws UnsupportedOperationException {
+        if (columnReferences.contains(column)) {
+            return new ScopedSymbol(name, column, DataTypes.STRING);
         }
         return null;
     }

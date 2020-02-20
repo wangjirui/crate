@@ -25,11 +25,7 @@ import io.crate.analyze.relations.AliasedAnalyzedRelation;
 import io.crate.analyze.relations.AnalyzedRelation;
 import io.crate.analyze.relations.AnalyzedRelationVisitor;
 import io.crate.analyze.relations.JoinPair;
-import io.crate.exceptions.AmbiguousColumnException;
 import io.crate.expression.symbol.Symbol;
-import io.crate.expression.symbol.Symbols;
-import io.crate.metadata.ColumnIdent;
-import io.crate.metadata.table.Operation;
 import io.crate.sql.tree.QualifiedName;
 
 import javax.annotation.Nonnull;
@@ -84,24 +80,6 @@ public class MultiSourceSelect implements AnalyzedRelation {
     @Override
     public <C, R> R accept(AnalyzedRelationVisitor<C, R> visitor, C context) {
         return visitor.visitMultiSourceSelect(this, context);
-    }
-
-    @Override
-    public Symbol getField(ColumnIdent path, Operation operation) throws UnsupportedOperationException {
-        if (operation != Operation.READ) {
-            throw new UnsupportedOperationException(
-                "getField on MultiSourceSelect is only supported for READ operations");
-        }
-        Symbol match = null;
-        for (Symbol output : outputs()) {
-            if (Symbols.pathFromSymbol(output).equals(path)) {
-                if (match != null) {
-                    throw new AmbiguousColumnException(path, output);
-                }
-                match = output;
-            }
-        }
-        return match;
     }
 
     @Override

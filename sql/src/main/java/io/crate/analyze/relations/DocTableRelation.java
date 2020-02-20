@@ -51,15 +51,15 @@ public class DocTableRelation extends AbstractTableRelation<DocTableInfo> {
     }
 
     @Override
-    public Reference getField(ColumnIdent path, Operation operation) throws UnsupportedOperationException, ColumnUnknownException {
+    public Reference getField(ColumnIdent column, Operation operation) throws UnsupportedOperationException, ColumnUnknownException {
         if (operation == Operation.UPDATE) {
-            ensureColumnCanBeUpdated(path);
+            ensureColumnCanBeUpdated(column);
         }
-        Reference reference = tableInfo.getReadReference(path);
+        Reference reference = tableInfo.getReadReference(column);
         if (reference == null) {
-            reference = tableInfo.indexColumn(path);
+            reference = tableInfo.indexColumn(column);
             if (reference == null) {
-                return tableInfo.getDynamic(path, operation == Operation.INSERT || operation == Operation.UPDATE);
+                return tableInfo.getDynamic(column, operation == Operation.INSERT || operation == Operation.UPDATE);
             }
         }
         return reference;

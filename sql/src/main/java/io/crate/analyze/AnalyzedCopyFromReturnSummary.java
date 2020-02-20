@@ -24,12 +24,10 @@ package io.crate.analyze;
 
 import io.crate.analyze.relations.AnalyzedRelation;
 import io.crate.analyze.relations.AnalyzedRelationVisitor;
-import io.crate.exceptions.ColumnUnknownException;
 import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.doc.DocTableInfo;
-import io.crate.metadata.table.Operation;
 import io.crate.sql.tree.GenericProperties;
 import io.crate.sql.tree.QualifiedName;
 import io.crate.sql.tree.Table;
@@ -68,12 +66,6 @@ public class AnalyzedCopyFromReturnSummary extends AnalyzedCopyFrom implements A
     public <C, R> R accept(AnalyzedRelationVisitor<C, R> visitor, C context) {
         throw new UnsupportedOperationException(
             getClass().getCanonicalName() + " is virtual relation, visiting it is unsupported");
-    }
-
-    @Override
-    public ScopedSymbol getField(ColumnIdent path, Operation operation)
-        throws UnsupportedOperationException, ColumnUnknownException {
-        throw new UnsupportedOperationException("getField is unsupported on internal relation for copy from return");
     }
 
     @Override

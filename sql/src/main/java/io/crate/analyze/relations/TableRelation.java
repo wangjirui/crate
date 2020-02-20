@@ -44,11 +44,11 @@ public class TableRelation extends AbstractTableRelation<TableInfo> {
     }
 
     @Override
-    public Reference getField(ColumnIdent path, Operation operation) throws ColumnUnknownException {
+    public Reference getField(ColumnIdent column, Operation operation) throws ColumnUnknownException {
         switch (operation) {
             case READ:
             case UPDATE:
-                return getField(path);
+                return getField(column);
             case INSERT:
             case DELETE:
                 throw new UnsupportedOperationException("getField is only supported for read or update operations on TableRelation");

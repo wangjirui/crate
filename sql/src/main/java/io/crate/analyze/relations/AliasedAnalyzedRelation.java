@@ -75,15 +75,15 @@ public class AliasedAnalyzedRelation implements AnalyzedRelation, FieldResolver 
     }
 
     @Override
-    public Symbol getField(ColumnIdent path, Operation operation) throws UnsupportedOperationException, ColumnUnknownException {
+    public Symbol getField(ColumnIdent column, Operation operation) throws UnsupportedOperationException, ColumnUnknownException {
         for (Symbol output : outputs) {
             ColumnIdent outputName = Symbols.pathFromSymbol(output);
-            if (outputName.equals(path)) {
+            if (outputName.equals(column)) {
                 return output;
             }
             if (output instanceof AliasSymbol) {
                 AliasSymbol aliasSymbol = (AliasSymbol) output;
-                if (new ColumnIdent(aliasSymbol.alias()).equals(path)) {
+                if (new ColumnIdent(aliasSymbol.alias()).equals(column)) {
                     return aliasSymbol.symbol();
                 }
             }

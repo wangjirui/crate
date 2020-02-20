@@ -24,11 +24,8 @@ package io.crate.analyze;
 
 import io.crate.analyze.relations.AnalyzedRelation;
 import io.crate.analyze.relations.AnalyzedRelationVisitor;
-import io.crate.exceptions.ColumnUnknownException;
 import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.Symbols;
-import io.crate.metadata.ColumnIdent;
-import io.crate.metadata.table.Operation;
 import io.crate.sql.tree.QualifiedName;
 
 import javax.annotation.Nonnull;
@@ -62,20 +59,6 @@ public class QueriedSelectRelation<T extends AnalyzedRelation> implements Analyz
     @Override
     public <C, R> R accept(AnalyzedRelationVisitor<C, R> visitor, C context) {
         return visitor.visitQueriedSelectRelation(this, context);
-    }
-
-    @Nullable
-    @Override
-    public Symbol getField(ColumnIdent path, Operation operation) throws UnsupportedOperationException, ColumnUnknownException {
-        if (operation != Operation.READ) {
-            throw new UnsupportedOperationException("getField on QueriedSelectRelation is only supported for READ operations");
-        }
-        for (Symbol output : outputs()) {
-            if (Symbols.pathFromSymbol(output).equals(path)) {
-                return output;
-            }
-        }
-        return null;
     }
 
     @Override

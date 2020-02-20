@@ -24,11 +24,9 @@ package io.crate.analyze;
 
 import io.crate.analyze.relations.AnalyzedRelation;
 import io.crate.analyze.relations.AnalyzedRelationVisitor;
-import io.crate.exceptions.ColumnUnknownException;
 import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.ColumnIdent;
-import io.crate.metadata.table.Operation;
 import io.crate.profile.ProfilingContext;
 import io.crate.sql.tree.QualifiedName;
 import io.crate.types.ObjectType;
@@ -69,11 +67,6 @@ public class ExplainAnalyzedStatement implements AnalyzedStatement, AnalyzedRela
     @Override
     public <C, R> R accept(AnalyzedRelationVisitor<C, R> visitor, C context) {
         return visitor.visitExplain(this, context);
-    }
-
-    @Override
-    public ScopedSymbol getField(ColumnIdent path, Operation operation) throws UnsupportedOperationException, ColumnUnknownException {
-        throw new UnsupportedOperationException("getField is not supported");
     }
 
     @Override

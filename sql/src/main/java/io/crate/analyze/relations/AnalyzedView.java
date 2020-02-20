@@ -25,11 +25,8 @@ package io.crate.analyze.relations;
 import io.crate.analyze.HavingClause;
 import io.crate.analyze.OrderBy;
 import io.crate.analyze.WhereClause;
-import io.crate.exceptions.ColumnUnknownException;
 import io.crate.expression.symbol.Symbol;
-import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.RelationName;
-import io.crate.metadata.table.Operation;
 import io.crate.sql.tree.QualifiedName;
 
 import javax.annotation.Nonnull;
@@ -73,15 +70,6 @@ public final class AnalyzedView implements AnalyzedRelation {
     @Override
     public <C, R> R accept(AnalyzedRelationVisitor<C, R> visitor, C context) {
         return visitor.visitView(this, context);
-    }
-
-    @Override
-    public Symbol getField(ColumnIdent path, Operation operation) throws UnsupportedOperationException, ColumnUnknownException {
-        if (operation != Operation.READ) {
-            throw new UnsupportedOperationException("getField on AnalyzedView is only supported for READ operations");
-        }
-        // TODO: would need to change if view introduces a scope
-        return relation.getField(path, operation);
     }
 
     @Override
