@@ -22,16 +22,8 @@
 
 package io.crate.expression.symbol.format;
 
-import io.crate.analyze.QueriedSelectRelation;
-import io.crate.analyze.relations.AnalyzedRelation;
-import io.crate.analyze.relations.RelationPrinter;
-import io.crate.analyze.relations.TableFunctionRelation;
 import io.crate.execution.engine.aggregation.impl.CountAggregation;
 import io.crate.expression.operator.Operator;
-import io.crate.analyze.QueriedSelectRelation;
-import io.crate.analyze.relations.AnalyzedRelation;
-import io.crate.analyze.relations.RelationPrinter;
-import io.crate.analyze.relations.TableFunctionRelation;
 import io.crate.expression.operator.any.AnyOperator;
 import io.crate.expression.predicate.IsNullPredicate;
 import io.crate.expression.predicate.MatchPredicate;

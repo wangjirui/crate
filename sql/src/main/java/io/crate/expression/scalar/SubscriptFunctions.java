@@ -52,7 +52,7 @@ public final class SubscriptFunctions {
             default:
                 throw new UnsupportedOperationException(
                     "Object subscript syntax is only valid on expressions of type `object` or `array`. " +
-                    "Expression `" + SymbolPrinter.INSTANCE.printUnqualified(baseSymbol) + "` has type `" + baseType.getName() + "`");
+                    "Expression `" + SymbolPrinter.printUnqualified(baseSymbol) + "` has type `" + baseType.getName() + "`");
         }
     }
 

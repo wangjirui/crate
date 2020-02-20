@@ -60,7 +60,7 @@ public class ValuesAnalyzerTest extends CrateDummyClusterServiceUnitTest {
 
     @Test
     public void test_values_used_in_sub_query_can_be_analyzed() {
-        AliasedAnalyzedRelation rel = e.analyze("SELECT x, y FROM (VALUES (1, 2)) AS t (x, y)");
+        QueriedSelectRelation<AliasedAnalyzedRelation> rel = e.analyze("SELECT x, y FROM (VALUES (1, 2)) AS t (x, y)");
         assertThat(rel.outputs(), contains(
             SymbolMatchers.isField("x"),
             SymbolMatchers.isField("y")

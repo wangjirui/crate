@@ -121,9 +121,8 @@ public class LogicalPlannerTest extends CrateDummyClusterServiceUnitTest {
                                 "   select a, x from t1 order by a limit 3) tt " +
                                 "order by x desc limit 1");
         assertThat(plan, isPlan("Limit[1;0]\n" +
-                                "Boundary[a, x]\n" +    // Aliased relation boundary
-                                "Boundary[a, x]\n" +
                                 "OrderBy[x DESC]\n" +
+                                "Rename[a, x] AS tt\n" +
                                 "Limit[3;0]\n" +
                                 "OrderBy[a ASC]\n" +
                                 "Collect[doc.t1 | [a, x] | true]\n"));
@@ -133,8 +132,7 @@ public class LogicalPlannerTest extends CrateDummyClusterServiceUnitTest {
     public void testIntermediateFetch() throws Exception {
         LogicalPlan plan = plan("select sum(x) from (select x from t1 limit 10) tt");
         assertThat(plan, isPlan("Aggregate[sum(x)]\n" +
-                                "Boundary[x]\n" +       // Aliased relation boundary
-                                "Boundary[x]\n" +
+                                "Rename[x] AS tt\n" +       // Aliased relation boundary
                                 "Limit[10;0]\n" +
                                 "Collect[doc.t1 | [x] | true]\n"));
     }
@@ -201,12 +199,11 @@ public class LogicalPlannerTest extends CrateDummyClusterServiceUnitTest {
                                "on t1.cnt = t2.i::long ");
         assertThat(plan, isPlan("Eval[i, cnt]\n" +
                                 "HashJoin[\n" +
-                                "    Boundary[cnt]\n" +     // Aliased relation boundary
-                                "    Boundary[cnt]\n" +
+                                "    Rename[cnt] AS t1\n" +     // Aliased relation boundary
+                                "    Eval[count() AS cnt]\n" +
                                 "    Count[doc.t1 | true]\n" +
                                 "    --- INNER ---\n" +
-                                "    Boundary[i]\n" +       // Aliased relation boundary
-                                "    Boundary[i]\n" +
+                                "    Rename[i] AS t2\n" +       // Aliased relation boundary
                                 "    Limit[1;0]\n" +
                                 "    Collect[doc.t2 | [i] | true]\n" +
                                 "]\n"));

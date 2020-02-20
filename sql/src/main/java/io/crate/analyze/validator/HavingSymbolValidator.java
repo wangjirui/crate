@@ -63,8 +63,8 @@ public class HavingSymbolValidator {
         private static void ensurePresentInGroupBY(Symbol symbol, HavingContext context) {
             if (!context.insideAggregation && !context.groupByContains(symbol)) {
                 throw new IllegalArgumentException(
-                    SymbolFormatter.format("Cannot use column %s outside of an Aggregation in HAVING clause. " +
-                                           "Only GROUP BY keys allowed here.", symbol));
+                    SymbolPrinter.format("Cannot use column %s outside of an Aggregation in HAVING clause. " +
+                                         "Only GROUP BY keys allowed here.", symbol));
             }
         }
 

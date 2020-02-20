@@ -30,7 +30,10 @@ import io.crate.testing.SQLExecutor;
 import org.junit.Before;
 import org.junit.Test;
 
+import static io.crate.testing.SymbolMatchers.isAlias;
+import static io.crate.testing.SymbolMatchers.isFunction;
 import static io.crate.testing.SymbolMatchers.isLiteral;
+import static io.crate.testing.SymbolMatchers.isReference;
 import static io.crate.testing.TestingHelpers.isSQL;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.core.Is.is;
@@ -93,11 +96,26 @@ public class ShowStatementsAnalyzerTest extends CrateDummyClusterServiceUnitTest
         AnalyzedRelation relation =
             analyze("show tables in QNAME where table_name = 'foo' or table_name like '%bar%'");
         assertThat(relation.isDistinct(), is(true));
-        assertThat(relation, isSQL(
+        assertThat(relation.outputs(), contains(
+            isAlias("table_name", isReference("table_name"))
+        ));
+        assertThat(
+            relation.where().queryOrFallback(),
+            isFunction(
+                "op_and",
+                isFunction("op_and"),
+                isFunction("op_or", isFunction("op_="), isFunction("op_like"))
+            )
+        );
+        assertThat(relation.orderBy().orderBySymbols(), contains(isAlias("table_name", isReference("table_name"))));
+
+        /*
+            isSQL(
             "SELECT information_schema.tables.table_name " +
             "WHERE (((information_schema.tables.table_type = 'BASE TABLE') AND (information_schema.tables.table_schema = 'qname')) " +
             "AND ((information_schema.tables.table_name = 'foo') OR (information_schema.tables.table_name LIKE '%bar%'))) " +
             "ORDER BY information_schema.tables.table_name"));
+         */
 
         relation = analyze("show tables where table_name like '%'");
         assertThat(relation.isDistinct(), is(true));
@@ -180,10 +198,10 @@ public class ShowStatementsAnalyzerTest extends CrateDummyClusterServiceUnitTest
     public void testRewriteOfTransactionIsolation() {
         QueriedSelectRelation<AbstractTableRelation<?>> stmt = analyze("show transaction isolation level");
         assertThat(stmt.subRelation().tableInfo().ident(), is(SysClusterTableInfo.IDENT));
-        assertThat(stmt.outputs(), contains(isLiteral("read uncommitted")));
+        assertThat(stmt.outputs(), contains(isAlias("transaction_isolation", isLiteral("read uncommitted"))));
 
         stmt = analyze("show transaction_isolation");
         assertThat(stmt.subRelation().tableInfo().ident(), is(SysClusterTableInfo.IDENT));
-        assertThat(stmt.outputs(), contains(isLiteral("read uncommitted")));
+        assertThat(stmt.outputs(), contains(isAlias("transaction_isolation", isLiteral("read uncommitted"))));
     }
 }

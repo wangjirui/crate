@@ -62,6 +62,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static io.crate.testing.SymbolMatchers.isAlias;
 import static io.crate.testing.SymbolMatchers.isField;
 import static io.crate.testing.SymbolMatchers.isFunction;
 import static io.crate.testing.SymbolMatchers.isLiteral;
@@ -559,7 +560,7 @@ public class UpdateAnalyzerTest extends CrateDummyClusterServiceUnitTest {
         assertThat(
             stmt.assignmentByTargetCol().keySet(),
             contains(isReference("name", DataTypes.STRING)));
-        assertThat(stmt.outputs(), contains(isReference("id")));
+        assertThat(stmt.outputs(), contains(isAlias("foo", isReference("id"))));
     }
 
     @Test
@@ -569,7 +570,7 @@ public class UpdateAnalyzerTest extends CrateDummyClusterServiceUnitTest {
         assertThat(
             stmt.assignmentByTargetCol().keySet(),
             contains(isReference("name", DataTypes.STRING)));
-        assertThat(stmt.outputs(), is(contains(isField("foo"), isField("bar"))));
+        assertThat(stmt.outputs(), is(contains(isAlias("foo", isReference("id")), isAlias("bar", isReference("name")))));
     }
 
     @Test
@@ -586,7 +587,7 @@ public class UpdateAnalyzerTest extends CrateDummyClusterServiceUnitTest {
         assertThat(
             stmt.assignmentByTargetCol().keySet(),
             contains(isReference("name", DataTypes.STRING)));
-        assertThat(stmt.outputs(), is(contains(isField("foo"))));
+        assertThat(stmt.outputs(), is(contains(isAlias("foo", isFunction("add", isReference("id"), isLiteral(1L))))));
     }
 
     @Test
@@ -596,7 +597,10 @@ public class UpdateAnalyzerTest extends CrateDummyClusterServiceUnitTest {
         assertThat(
             stmt.assignmentByTargetCol().keySet(),
             contains(isReference("name", DataTypes.STRING)));
-        assertThat(stmt.outputs(), is(contains(isField("foo"), isField("bar"))));
+        assertThat(stmt.outputs(), is(contains(
+            isAlias("foo", isFunction("add", isReference("id"), isLiteral(1L))),
+            isAlias("bar", isFunction("subtract"))))
+        );
     }
 
     private List<Object[]> execute(Plan plan, Row params) throws Exception {
