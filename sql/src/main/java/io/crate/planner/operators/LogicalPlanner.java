@@ -232,9 +232,10 @@ public class LogicalPlanner {
             tableStats,
             params
         );
-        return relation.accept(
-            planBuilder,
-            new PlanBuilderContext(relation.outputs(), WhereClause.MATCH_ALL)
+        return MultiPhase.createIfNeeded(
+            relation.accept(planBuilder, new PlanBuilderContext(relation.outputs(), WhereClause.MATCH_ALL)),
+            relation,
+            subqueryPlanner
         );
     }
 
@@ -313,8 +314,16 @@ public class LogicalPlanner {
 
         @Override
         public LogicalPlan visitView(AnalyzedView view, PlanBuilderContext context) {
-            // TODO: add scoping to view and then inject rename operator here
-            return view.relation().accept(this, context);
+            var child = view.relation();
+            // required remap here might be an indication that we should remove the PlanBuilderContext
+            // and settle for optimization rules
+            var remapScopedSymbols = FieldReplacer.bind(view::resolveField);
+            var newCtx = new PlanBuilderContext(
+                Lists2.map(context.toCollect, remapScopedSymbols),
+                context.whereClause.map(remapScopedSymbols)
+            );
+            var source = child.accept(this, newCtx);
+            return new Rename(context.toCollect, view.getQualifiedName(), source);
         }
 
         @Override
@@ -343,7 +352,7 @@ public class LogicalPlanner {
                 tableStats,
                 params
             );
-            return MultiPhase.createIfNeeded(
+            return
                 Eval.create(
                     Limit.create(
                         Order.create(
@@ -373,18 +382,15 @@ public class LogicalPlanner {
                         mss.offset()
                     ),
                     mss.outputs()
-                ),
-                mss,
-                subqueryPlanner
-            );
+                );
         }
 
         @Override
         public LogicalPlan visitQueriedSelectRelation(QueriedSelectRelation<?> relation, PlanBuilderContext context) {
             SplitPoints splitPoints = SplitPointsBuilder.create(relation);
-            var newCtx = new PlanBuilderContext(splitPoints.toCollect(), relation.where());
+            var newCtx = new PlanBuilderContext(splitPoints.toCollect(), relation.where().add(context.whereClause.queryOrFallback()));
             LogicalPlan source = relation.subRelation().accept(this, newCtx);
-            return MultiPhase.createIfNeeded(
+            return
                 Eval.create(
                     Limit.create(
                         Order.create(
@@ -414,10 +420,7 @@ public class LogicalPlanner {
                         relation.offset()
                     ),
                     relation.outputs()
-                ),
-                relation,
-                subqueryPlanner
-            );
+                );
         }
     }
 

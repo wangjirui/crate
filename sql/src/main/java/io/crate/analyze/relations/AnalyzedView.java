@@ -25,15 +25,25 @@ package io.crate.analyze.relations;
 import io.crate.analyze.HavingClause;
 import io.crate.analyze.OrderBy;
 import io.crate.analyze.WhereClause;
+import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
+import io.crate.expression.symbol.Symbols;
 import io.crate.metadata.RelationName;
 import io.crate.sql.tree.QualifiedName;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+
+import java.util.ArrayList;
 import java.util.List;
 
-public final class AnalyzedView implements AnalyzedRelation {
+/**
+ * A view is a stored SELECT statement.
+ *
+ * This is semantically equivalent to {@code <relation> AS <viewName>} with the
+ * addition of special privilege behavior (Users can be granted privileges on a view)
+ **/
+public final class AnalyzedView implements AnalyzedRelation, FieldResolver {
 
     private final QualifiedName qualifiedName;
     private final RelationName name;
@@ -46,8 +56,14 @@ public final class AnalyzedView implements AnalyzedRelation {
         this.qualifiedName = QualifiedName.of(name.schema(), name.name());
         this.owner = owner;
         this.relation = relation;
-        // TODO - does a view introduce a new scope?
-        this.outputSymbols = relation.outputs();
+        var childOutputs = relation.outputs();
+        ArrayList<Symbol> outputs = new ArrayList<>(childOutputs.size());
+        for (int i = 0; i < childOutputs.size(); i++) {
+            var output = childOutputs.get(i);
+            var column = Symbols.pathFromSymbol(output);
+            outputs.add(new ScopedSymbol(qualifiedName, column, output.valueType()));
+        }
+        this.outputSymbols = List.copyOf(outputs);
     }
 
     public String owner() {
@@ -122,5 +138,15 @@ public final class AnalyzedView implements AnalyzedRelation {
         return "AnalyzedView{" + "qualifiedName=" + qualifiedName +
                ", relation=" + relation +
                '}';
+    }
+
+    @Nullable
+    @Override
+    public Symbol resolveField(ScopedSymbol field) {
+        var idx = outputSymbols.indexOf(field);
+        if (idx < 0) {
+            throw new IllegalArgumentException(field + " does not belong to " + getQualifiedName());
+        }
+        return relation.outputs().get(idx);
     }
 }

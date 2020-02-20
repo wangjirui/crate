@@ -57,7 +57,7 @@ public final class FieldReplacer extends FunctionCopyVisitor<Function<? super Sc
             var key = entry.getKey();
             if (key instanceof ScopedSymbol) {
                 Symbol newKey = mapper.apply((ScopedSymbol) key);
-                newIdentBoost.put((ScopedSymbol) newKey, entry.getValue().accept(this, mapper));
+                newIdentBoost.put(newKey, entry.getValue().accept(this, mapper));
             } else {
                 newIdentBoost.put(key, entry.getValue().accept(this, mapper));
             }

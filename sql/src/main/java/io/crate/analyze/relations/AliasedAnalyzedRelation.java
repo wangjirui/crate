@@ -25,13 +25,10 @@ package io.crate.analyze.relations;
 import io.crate.analyze.HavingClause;
 import io.crate.analyze.OrderBy;
 import io.crate.analyze.WhereClause;
-import io.crate.exceptions.ColumnUnknownException;
-import io.crate.expression.symbol.AliasSymbol;
 import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.Symbols;
 import io.crate.metadata.ColumnIdent;
-import io.crate.metadata.table.Operation;
 import io.crate.sql.tree.QualifiedName;
 
 import javax.annotation.Nonnull;
@@ -41,6 +38,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * <pre>{@code <relation> AS alias}</pre>
+ *
+ * This relation only provides a different name for an inner relation.
+ * The {@link #outputs()} of the aliased-relation are {@link ScopedSymbol}s,
+ * a 1:1 mapping of the outputs of the inner relation but associated with the aliased-relation.;
+ */
 public class AliasedAnalyzedRelation implements AnalyzedRelation, FieldResolver {
 
     private final AnalyzedRelation relation;
@@ -72,23 +76,6 @@ public class AliasedAnalyzedRelation implements AnalyzedRelation, FieldResolver 
 
     public AnalyzedRelation relation() {
         return relation;
-    }
-
-    @Override
-    public Symbol getField(ColumnIdent column, Operation operation) throws UnsupportedOperationException, ColumnUnknownException {
-        for (Symbol output : outputs) {
-            ColumnIdent outputName = Symbols.pathFromSymbol(output);
-            if (outputName.equals(column)) {
-                return output;
-            }
-            if (output instanceof AliasSymbol) {
-                AliasSymbol aliasSymbol = (AliasSymbol) output;
-                if (new ColumnIdent(aliasSymbol.alias()).equals(column)) {
-                    return aliasSymbol.symbol();
-                }
-            }
-        }
-        return null;
     }
 
     @Override
@@ -154,6 +141,10 @@ public class AliasedAnalyzedRelation implements AnalyzedRelation, FieldResolver 
     @Nullable
     @Override
     public Symbol resolveField(ScopedSymbol field) {
-        return relation.getField(field.column(), Operation.READ);
+        var idx = outputs.indexOf(field);
+        if (idx < 0) {
+            throw new IllegalArgumentException(field + " does not belong to " + getQualifiedName());
+        }
+        return relation.outputs().get(idx);
     }
 }

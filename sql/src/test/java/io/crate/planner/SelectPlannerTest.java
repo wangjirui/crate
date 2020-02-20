@@ -800,9 +800,8 @@ public class SelectPlannerTest extends CrateDummyClusterServiceUnitTest {
         LogicalPlan logicalPlan = e.logicalPlan(statement);
         assertThat(logicalPlan, isPlan(e.functions(),
             "RootBoundary[id, name, date, obj]\n" +
-            "Boundary[id, name, date, obj]\n" +
-            "Boundary[id, name, date, obj]\n" +
-            "Collect[doc.parted | [id, name, date, obj] | (date IS NULL)]\n"
+            "Rename[id, name, date, obj] AS t\n" +
+            "Collect[doc.parted | [id, name, date, obj] | ((date IS NULL) AND true)]\n"
         ));
         ExecutionPlan plan = e.plan(statement);
         Collect collect = plan instanceof Collect ? (Collect) plan : ((Collect) ((Merge) plan).subPlan());
