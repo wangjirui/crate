@@ -218,15 +218,12 @@ public class LogicalPlannerTest extends CrateDummyClusterServiceUnitTest {
                                 "   inner join t2 on t1.x = t2.y " +
                                 "order by t1.x " +
                                 "limit 10");
-        assertThat(plan, isPlan("Eval[x, a, y]\n" +
-                                "Limit[10;0]\n" +
+        assertThat(plan, isPlan("Limit[10;0]\n" +
                                 "OrderBy[x ASC]\n" +
                                 "HashJoin[\n" +
-                                "    Boundary[a, x, i]\n" +
-                                "    Collect[doc.t1 | [a, x, i] | true]\n" +
+                                "    Collect[doc.t1 | [x, a] | true]\n" +
                                 "    --- INNER ---\n" +
-                                "    Boundary[b, y, i]\n" +
-                                "    Collect[doc.t2 | [b, y, i] | true]\n" +
+                                "    Collect[doc.t2 | [y] | true]\n" +
                                 "]\n"));
     }
 

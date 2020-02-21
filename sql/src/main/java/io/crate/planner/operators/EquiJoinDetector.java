@@ -29,6 +29,7 @@ import io.crate.expression.symbol.Function;
 import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.SymbolVisitor;
+import io.crate.metadata.Reference;
 import io.crate.metadata.RelationName;
 import io.crate.planner.node.dql.join.JoinType;
 
@@ -110,6 +111,14 @@ public class EquiJoinDetector {
         public Void visitField(ScopedSymbol field, Context context) {
             if (context.insideEqOperator) {
                 context.usedRelationsInsideEqOperatorArgument.add(field.relation());
+            }
+            return null;
+        }
+
+        @Override
+        public Void visitReference(Reference ref, Context context) {
+            if (context.insideEqOperator) {
+                context.usedRelationsInsideEqOperatorArgument.add(ref.ident().tableIdent());
             }
             return null;
         }

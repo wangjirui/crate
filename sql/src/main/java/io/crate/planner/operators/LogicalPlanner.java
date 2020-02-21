@@ -70,6 +70,7 @@ import io.crate.planner.optimizer.rule.MoveFilterBeneathHashJoin;
 import io.crate.planner.optimizer.rule.MoveFilterBeneathNestedLoop;
 import io.crate.planner.optimizer.rule.MoveFilterBeneathOrder;
 import io.crate.planner.optimizer.rule.MoveFilterBeneathProjectSet;
+import io.crate.planner.optimizer.rule.MoveFilterBeneathRename;
 import io.crate.planner.optimizer.rule.MoveFilterBeneathUnion;
 import io.crate.planner.optimizer.rule.MoveFilterBeneathWindowAgg;
 import io.crate.planner.optimizer.rule.MoveOrderBeneathFetchOrEval;
@@ -82,6 +83,7 @@ import io.crate.planner.optimizer.rule.RewriteGroupByKeysLimitToTopNDistinct;
 import io.crate.statistics.TableStats;
 import org.elasticsearch.Version;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -112,6 +114,7 @@ public class LogicalPlanner {
                 new RemoveRedundantFetchOrEval(),
                 new MergeAggregateAndCollectToCount(),
                 new MergeFilters(),
+                new MoveFilterBeneathRename(),
                 new MoveFilterBeneathFetchOrEval(),
                 new MoveFilterBeneathOrder(),
                 new MoveFilterBeneathProjectSet(),
@@ -224,8 +227,6 @@ public class LogicalPlanner {
         // it would only contain `outputs` and the other properties would only be available
         // in the specific implementations
         var planBuilder = new PlanBuilder(
-            subqueryPlanner,
-            functions,
             txnCtx,
             hints,
             tableStats,
@@ -247,6 +248,9 @@ public class LogicalPlanner {
         // We could also not do that and instead rely on optimization rules
         // - Collect operator would default to outputs of the TableRelation; would need column pruning rule
         // - WhereClause would be added as filter initially and would be pushed into Collect via rule
+
+        // TODO: toCollect propagation is currently also necessary because `tableRel.outputs()` never contains
+        // system columns.
         public PlanBuilderContext(List<Symbol> toCollect, WhereClause whereClause) {
             this.toCollect = toCollect;
             this.whereClause = whereClause;
@@ -256,21 +260,15 @@ public class LogicalPlanner {
 
     static class PlanBuilder extends AnalyzedRelationVisitor<PlanBuilderContext, LogicalPlan> {
 
-        private final SubqueryPlanner subqueryPlanner;
-        private final Functions functions;
         private final CoordinatorTxnCtx txnCtx;
         private final Set<PlanHint> hints;
         private final TableStats tableStats;
         private final Row params;
 
-        private PlanBuilder(SubqueryPlanner subqueryPlanner,
-                            Functions functions,
-                            CoordinatorTxnCtx txnCtx,
+        private PlanBuilder(CoordinatorTxnCtx txnCtx,
                             Set<PlanHint> hints,
                             TableStats tableStats,
                             Row params) {
-            this.subqueryPlanner = subqueryPlanner;
-            this.functions = functions;
             this.txnCtx = txnCtx;
             this.hints = hints;
             this.tableStats = tableStats;
@@ -339,12 +337,30 @@ public class LogicalPlanner {
         @Override
         public LogicalPlan visitQueriedSelectRelation(QueriedSelectRelation relation, PlanBuilderContext context) {
             SplitPoints splitPoints = SplitPointsBuilder.create(relation);
-            var newCtx = new PlanBuilderContext(splitPoints.toCollect(), WhereClause.MATCH_ALL);
             LogicalPlan source = JoinPlanBuilder.buildJoinTree(
                 relation.from(),
                 relation.where().queryOrFallback(),
                 relation.joinPairs(),
-                rel -> rel.accept(this, newCtx),
+                rel -> {
+                    if (relation.from().size() == 1) {
+                        return rel.accept(this, new PlanBuilderContext(splitPoints.toCollect(), WhereClause.MATCH_ALL));
+                    } else {
+                        ArrayList<Symbol> toCollect = new ArrayList<>(splitPoints.toCollect().size());
+                        for (Symbol symbol : splitPoints.toCollect()) {
+                            RefVisitor.visitRefs(symbol, ref -> {
+                                if (ref.ident().tableIdent().equals(rel.relationName())) {
+                                    toCollect.add(ref);
+                                }
+                            });
+                            FieldsVisitor.visitFields(symbol, field -> {
+                                if (field.relation().equals(rel.relationName())) {
+                                    toCollect.add(field);
+                                }
+                            });
+                        }
+                        return rel.accept(this, new PlanBuilderContext(toCollect, WhereClause.MATCH_ALL));
+                    }
+                },
                 txnCtx.sessionContext().isHashJoinEnabled()
             );
             HavingClause having = relation.having();
