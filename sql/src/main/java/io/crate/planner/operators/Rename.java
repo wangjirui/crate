@@ -23,9 +23,11 @@
 package io.crate.planner.operators;
 
 import io.crate.analyze.OrderBy;
+import io.crate.analyze.relations.FieldResolver;
 import io.crate.common.collections.Lists2;
 import io.crate.data.Row;
 import io.crate.execution.dsl.projection.builder.ProjectionBuilder;
+import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.RelationName;
 import io.crate.planner.ExecutionPlan;
@@ -33,19 +35,22 @@ import io.crate.planner.PlannerContext;
 
 import javax.annotation.Nullable;
 import java.util.List;
+import java.util.Set;
 
 /**
  * https://en.wikipedia.org/wiki/Relational_algebra#Rename_(%CF%81)
  */
-public final class Rename extends ForwardingLogicalPlan {
+public final class Rename extends ForwardingLogicalPlan implements FieldResolver {
 
     private final List<Symbol> outputs;
+    private final FieldResolver fieldResolver;
     final RelationName name;
 
-    public Rename(List<Symbol> outputs, RelationName name, LogicalPlan source) {
+    public Rename(List<Symbol> outputs, RelationName name, FieldResolver fieldResolver, LogicalPlan source) {
         super(source);
-        this.name = name;
         this.outputs = outputs;
+        this.name = name;
+        this.fieldResolver = fieldResolver;
         assert this.outputs.size() == source.outputs().size()
             : "Rename operator must have exactly the same number of outputs as the source operator";
     }
@@ -69,11 +74,22 @@ public final class Rename extends ForwardingLogicalPlan {
 
     @Override
     public LogicalPlan replaceSources(List<LogicalPlan> sources) {
-        return new Rename(outputs, name, Lists2.getOnlyElement(sources));
+        return new Rename(outputs, name, fieldResolver, Lists2.getOnlyElement(sources));
     }
 
     @Override
     public <C, R> R accept(LogicalPlanVisitor<C, R> visitor, C context) {
         return visitor.visitRename(this, context);
+    }
+
+    @Nullable
+    @Override
+    public Symbol resolveField(ScopedSymbol field) {
+        return fieldResolver.resolveField(field);
+    }
+
+    @Override
+    public Set<RelationName> getRelationNames() {
+        return Set.of(name);
     }
 }

@@ -62,13 +62,7 @@ public class MoveFilterBeneathRename implements Rule<Filter> {
         Rename rename = captures.get(renameCapture);
         Filter newFilter = new Filter(
             rename.source(),
-            FieldReplacer.replaceFields(plan.query(), column -> {
-                int idx = rename.outputs().indexOf(column);
-                if (idx < 0) {
-                    throw new IllegalArgumentException("Column " + column + " does not belong to " + rename);
-                }
-                return rename.source().outputs().get(idx);
-            })
+            FieldReplacer.replaceFields(plan.query(), rename::resolveField)
         );
         return rename.replaceSources(List.of(newFilter));
     }

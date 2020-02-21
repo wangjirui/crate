@@ -49,10 +49,12 @@ import io.crate.expression.symbol.FieldsVisitor;
 import io.crate.expression.symbol.Function;
 import io.crate.expression.symbol.Literal;
 import io.crate.expression.symbol.RefVisitor;
+import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.SelectSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.CoordinatorTxnCtx;
 import io.crate.metadata.Functions;
+import io.crate.metadata.Reference;
 import io.crate.metadata.TransactionContext;
 import io.crate.planner.DependencyCarrier;
 import io.crate.planner.ExecutionPlan;
@@ -91,6 +93,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import static io.crate.expression.symbol.SelectSymbol.ResultType.SINGLE_COLUMN_SINGLE_VALUE;
@@ -306,7 +309,7 @@ public class LogicalPlanner {
                 context.whereClause.map(remapScopedSymbols)
             );
             var source = child.accept(this, newCtx);
-            return new Rename(context.toCollect, relation.relationName(), source);
+            return new Rename(context.toCollect, relation.relationName(), relation, source);
         }
 
         @Override
@@ -320,7 +323,7 @@ public class LogicalPlanner {
                 context.whereClause.map(remapScopedSymbols)
             );
             var source = child.accept(this, newCtx);
-            return new Rename(context.toCollect, view.relationName(), source);
+            return new Rename(context.toCollect, view.relationName(), view, source);
         }
 
         @Override
@@ -346,17 +349,19 @@ public class LogicalPlanner {
                         return rel.accept(this, new PlanBuilderContext(splitPoints.toCollect(), WhereClause.MATCH_ALL));
                     } else {
                         ArrayList<Symbol> toCollect = new ArrayList<>(splitPoints.toCollect().size());
+                        Consumer<Reference> addRefIfMatch = ref -> {
+                            if (ref.ident().tableIdent().equals(rel.relationName())) {
+                                toCollect.add(ref);
+                            }
+                        };
+                        Consumer<ScopedSymbol> addFieldIfMatch = field -> {
+                            if (field.relation().equals(rel.relationName())) {
+                                toCollect.add(field);
+                            }
+                        };
                         for (Symbol symbol : splitPoints.toCollect()) {
-                            RefVisitor.visitRefs(symbol, ref -> {
-                                if (ref.ident().tableIdent().equals(rel.relationName())) {
-                                    toCollect.add(ref);
-                                }
-                            });
-                            FieldsVisitor.visitFields(symbol, field -> {
-                                if (field.relation().equals(rel.relationName())) {
-                                    toCollect.add(field);
-                                }
-                            });
+                            RefVisitor.visitRefs(symbol, addRefIfMatch);
+                            FieldsVisitor.visitFields(symbol, addFieldIfMatch);
                         }
                         return rel.accept(this, new PlanBuilderContext(toCollect, WhereClause.MATCH_ALL));
                     }

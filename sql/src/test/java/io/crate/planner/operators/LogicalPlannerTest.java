@@ -95,10 +95,9 @@ public class LogicalPlannerTest extends CrateDummyClusterServiceUnitTest {
     @Test
     public void testQTFWithOrderByAndAlias() throws Exception {
         LogicalPlan plan = plan("select a, x from t1 as t order by a");
-        assertThat(plan, isPlan("Eval[a, x]\n" +
-                                "OrderBy[a ASC]\n" +
-                                "Rename[a, x, i] AS t\n" +
-                                "Collect[doc.t1 | [a, x, i] | true]\n"));
+        assertThat(plan, isPlan("OrderBy[a ASC]\n" +
+                                "Rename[a, x] AS t\n" +
+                                "Collect[doc.t1 | [a, x] | true]\n"));
     }
 
     @Test
@@ -152,8 +151,8 @@ public class LogicalPlannerTest extends CrateDummyClusterServiceUnitTest {
         assertThat(plan, isPlan("Eval[min(a), min(x)]\n" +
                                 "Filter[((min(x) < 33) AND (max(x) > 100))]\n" +
                                 "Aggregate[min(a), min(x), max(x)]\n" +
-                                "Rename[a, x, i] AS tt\n" +
-                                "Collect[doc.t1 | [a, x, i] | true]\n"));
+                                "Rename[a, x] AS tt\n" +
+                                "Collect[doc.t1 | [a, x] | true]\n"));
     }
 
     @Test
@@ -176,10 +175,11 @@ public class LogicalPlannerTest extends CrateDummyClusterServiceUnitTest {
         assertThat(plan, isPlan("MultiPhase[\n" +
                                 "    subQueries[\n" +
                                 "        RootBoundary[1]\n" +
-                                "        Limit[2;0]\n" +
+                                "        Limit[2;0]\n" + // implicitly added limit to enforce max1row
                                 "        MultiPhase[\n" +
                                 "            subQueries[\n" +
                                 "                RootBoundary[count(*)]\n" +
+                                "                Limit[2;0]\n" +
                                 "                Limit[1;0]\n" +
                                 "                Count[doc.t2 | true]\n" +
                                 "            ]\n" +
@@ -286,16 +286,14 @@ public class LogicalPlannerTest extends CrateDummyClusterServiceUnitTest {
                                 "limit 10");
         assertThat(plan, isPlan("Limit[10;0]\n" +
                                 "HashJoin[\n" +
-                                "    Boundary[a, i]\n" +    // Aliased relation boundary
-                                "    Boundary[a, i]\n" +
+                                "    Rename[a, i] AS t1\n" +    // Aliased relation boundary
                                 "    Filter[(a > '50')]\n" +
                                 "    Limit[5;0]\n" +
                                 "    OrderBy[a ASC]\n" +
                                 "    Collect[doc.t1 | [a, i] | true]\n" +
                                 "    --- INNER ---\n" +
-                                "    Boundary[b, i]\n" +    // Aliased relation boundary
-                                "    Boundary[b, i]\n" +
-                                "    Collect[doc.t2 | [b, i] | ((b > '10') AND (b > '100'))]\n" +
+                                "    Rename[b, i] AS t2\n" +    // Aliased relation boundary
+                                "    Collect[doc.t2 | [b, i] | ((b > '100') AND (b > '10'))]\n" +
                                 "]\n"));
     }
 
@@ -305,14 +303,13 @@ public class LogicalPlannerTest extends CrateDummyClusterServiceUnitTest {
                               "FROM v2 " +
                               "  INNER JOIN v3 " +
                               "  ON v2.x= v3.x");
-        assertThat(plan, isPlan("Eval[x, a, x, a]\n" +
-                                "HashJoin[\n" +
-                                "    Boundary[a, x]\n" +
-                                "    Boundary[a, x]\n" +
+        assertThat(plan, isPlan("HashJoin[\n" +
+                                "    Rename[x, a] AS doc.v2\n" +
+                                "    Eval[x, a]\n" +
                                 "    Collect[doc.t1 | [a, x] | true]\n" +
                                 "    --- INNER ---\n" +
-                                "    Boundary[a, x]\n" +
-                                "    Boundary[a, x]\n" +
+                                "    Rename[x, a] AS doc.v3\n" +
+                                "    Eval[x, a]\n" +
                                 "    Collect[doc.t1 | [a, x] | true]\n" +
                                 "]\n"));
     }
@@ -320,7 +317,7 @@ public class LogicalPlannerTest extends CrateDummyClusterServiceUnitTest {
     @Test
     public void testAliasedPrimaryKeyLookupHasGetPlan() {
         LogicalPlan plan = plan("select name from users u where id = 1");
-        assertThat(plan, isPlan("Boundary[name]\n" +
+        assertThat(plan, isPlan("Rename[name] AS u\n" +
                                 "Get[doc.users | name | DocKeys{1}"));
     }
 
