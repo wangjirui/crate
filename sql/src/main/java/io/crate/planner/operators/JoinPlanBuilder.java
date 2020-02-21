@@ -22,29 +22,32 @@
 
 package io.crate.planner.operators;
 
-import io.crate.action.sql.SessionContext;
 import io.crate.analyze.relations.AnalyzedRelation;
 import io.crate.analyze.relations.JoinPair;
-import io.crate.data.Row;
+import io.crate.analyze.relations.QuerySplitter;
+import io.crate.common.collections.Lists2;
+import io.crate.execution.engine.join.JoinOperations;
 import io.crate.expression.operator.AndOperator;
 import io.crate.expression.symbol.Symbol;
-import io.crate.metadata.CoordinatorTxnCtx;
-import io.crate.metadata.Functions;
 import io.crate.metadata.RelationName;
-import io.crate.planner.SubqueryPlanner;
 import io.crate.planner.node.dql.join.JoinType;
-import io.crate.sql.tree.QualifiedName;
-import io.crate.statistics.TableStats;
 import org.elasticsearch.common.util.set.Sets;
 
 import javax.annotation.Nullable;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static io.crate.planner.operators.EquiJoinDetector.isHashJoinPossible;
 
 /**
  * A logical plan builder for `Join` operations. It will also evaluate which `Join` operator to use and build the
@@ -57,48 +60,33 @@ import java.util.stream.Stream;
 public class JoinPlanBuilder {
 
     static LogicalPlan buildJoinTree(List<AnalyzedRelation> from,
+                                     Symbol whereClause,
                                      List<JoinPair> joinPairs,
-                                     Function<AnalyzedRelation, LogicalPlan> plan) {
+                                     Function<AnalyzedRelation, LogicalPlan> plan,
+                                     boolean hashJoinEnabled) {
         if (from.size() == 1) {
-            return plan.apply(from.get(0));
+            return Filter.create(plan.apply(from.get(0)), whereClause);
         }
-        throw new UnsupportedOperationException("NYI");
-    }
-
-    /*
-    static LogicalPlan createNodes(MultiSourceSelect mss,
-                                   WhereClause where,
-                                   SubqueryPlanner subqueryPlanner,
-                                   Functions functions,
-                                   CoordinatorTxnCtx txnCtx,
-                                   Set<PlanHint> hints,
-                                   TableStats tableStats,
-                                   Row params) {
-        Map<Set<QualifiedName>, Symbol> queryParts = QuerySplitter.split(where.queryOrFallback());
-        LinkedHashMap<Set<QualifiedName>, JoinPair> joinPairs =
+        Map<Set<RelationName>, Symbol> queryParts = QuerySplitter.split(whereClause);
+        LinkedHashMap<Set<RelationName>, JoinPair> joinPairsByRelations =
             JoinOperations.buildRelationsToJoinPairsMap(
-                JoinOperations.convertImplicitJoinConditionsToJoinPairs(mss.joinPairs(), queryParts));
+                JoinOperations.convertImplicitJoinConditionsToJoinPairs(joinPairs, queryParts));
 
-        Collection<QualifiedName> orderedRelationNames;
-        if (mss.sources().size() > 2) {
-            orderedRelationNames = JoinOrdering.getOrderedRelationNames(
-                mss.sources().keySet(),
-                joinPairs.keySet(),
-                queryParts.keySet()
-            );
-        } else {
-            orderedRelationNames = mss.sources().keySet();
-        }
+        Collection<RelationName> orderedRelationNames = JoinOrdering.getOrderedRelationNames(
+            Lists2.map(from, AnalyzedRelation::relationName),
+            joinPairsByRelations.keySet(),
+            queryParts.keySet()
+        );
 
-        Iterator<QualifiedName> it = orderedRelationNames.iterator();
+        Iterator<RelationName> it = orderedRelationNames.iterator();
 
-        final QualifiedName lhsName = it.next();
-        final QualifiedName rhsName = it.next();
-        Set<QualifiedName> joinNames = new HashSet<>();
+        final RelationName lhsName = it.next();
+        final RelationName rhsName = it.next();
+        Set<RelationName> joinNames = new HashSet<>();
         joinNames.add(lhsName);
         joinNames.add(rhsName);
 
-        JoinPair joinLhsRhs = joinPairs.remove(joinNames);
+        JoinPair joinLhsRhs = joinPairsByRelations.remove(joinNames);
         final JoinType joinType;
         final Symbol joinCondition;
         if (joinLhsRhs == null) {
@@ -109,10 +97,12 @@ public class JoinPlanBuilder {
             joinCondition = joinLhsRhs.condition();
         }
 
-        AnalyzedRelation lhs = mss.sources().get(lhsName);
-        AnalyzedRelation rhs = mss.sources().get(rhsName);
-        LogicalPlan lhsPlan = LogicalPlanner.plan(lhs, subqueryPlanner, functions, txnCtx, hints, tableStats, params);
-        LogicalPlan rhsPlan = LogicalPlanner.plan(rhs, subqueryPlanner, functions, txnCtx, hints, tableStats, params);
+        Map<RelationName, AnalyzedRelation> sources = from.stream()
+            .collect(Collectors.toMap(AnalyzedRelation::relationName, rel -> rel));
+        AnalyzedRelation lhs = sources.get(lhsName);
+        AnalyzedRelation rhs = sources.get(rhsName);
+        LogicalPlan lhsPlan = plan.apply(lhs);
+        LogicalPlan rhsPlan = plan.apply(rhs);
         Symbol query = removeParts(queryParts, lhsName, rhsName);
         LogicalPlan joinPlan = createJoinPlan(
             lhsPlan,
@@ -122,37 +112,32 @@ public class JoinPlanBuilder {
             lhs,
             rhs,
             query,
-            txnCtx.sessionContext(),
-            tableStats);
+            hashJoinEnabled
+        );
 
         joinPlan = Filter.create(joinPlan, query);
         while (it.hasNext()) {
-            AnalyzedRelation nextRel = mss.sources().get(it.next());
+            AnalyzedRelation nextRel = sources.get(it.next());
             joinPlan = joinWithNext(
-                tableStats,
-                hints,
+                plan,
                 joinPlan,
                 nextRel,
                 joinNames,
-                joinPairs,
+                joinPairsByRelations,
                 queryParts,
-                subqueryPlanner,
                 lhs,
-                functions,
-                txnCtx,
-                params
+                hashJoinEnabled
             );
-            joinNames.add(nextRel.getQualifiedName());
+            joinNames.add(nextRel.relationName());
         }
         if (!queryParts.isEmpty()) {
             joinPlan = Filter.create(joinPlan, AndOperator.join(queryParts.values()));
             queryParts.clear();
         }
-        assert joinPairs.isEmpty() : "Must've applied all joinPairs";
+        assert joinPairsByRelations.isEmpty() : "Must've applied all joinPairs";
 
         return joinPlan;
     }
-     */
 
     private static LogicalPlan createJoinPlan(LogicalPlan lhsPlan,
                                               LogicalPlan rhsPlan,
@@ -161,15 +146,13 @@ public class JoinPlanBuilder {
                                               AnalyzedRelation lhs,
                                               AnalyzedRelation rhs,
                                               Symbol query,
-                                              SessionContext sessionContext,
-                                              TableStats tableStats) {
-        if (isHashJoinPossible(joinType, joinCondition, sessionContext)) {
+                                              boolean hashJoinEnabled) {
+        if (hashJoinEnabled && isHashJoinPossible(joinType, joinCondition)) {
             return new HashJoin(
                 lhsPlan,
                 rhsPlan,
                 joinCondition,
-                rhs,
-                tableStats);
+                rhs);
         } else {
             return new NestedLoopJoin(
                 lhsPlan,
@@ -179,10 +162,6 @@ public class JoinPlanBuilder {
                 !query.symbolType().isValueSymbol(),
                 lhs);
         }
-    }
-
-    private static boolean isHashJoinPossible(JoinType joinType, Symbol joinCondition, SessionContext sessionContext) {
-        return sessionContext.isHashJoinEnabled() && EquiJoinDetector.isHashJoinPossible(joinType, joinCondition);
     }
 
     private static JoinType maybeInvertPair(RelationName rhsName, JoinPair pair) {
@@ -196,18 +175,14 @@ public class JoinPlanBuilder {
         return pair.joinType().invert();
     }
 
-    private static LogicalPlan joinWithNext(TableStats tableStats,
-                                            Set<PlanHint> hints,
+    private static LogicalPlan joinWithNext(Function<AnalyzedRelation, LogicalPlan> plan,
                                             LogicalPlan source,
                                             AnalyzedRelation nextRel,
                                             Set<RelationName> joinNames,
                                             Map<Set<RelationName>, JoinPair> joinPairs,
                                             Map<Set<RelationName>, Symbol> queryParts,
-                                            SubqueryPlanner subqueryPlanner,
                                             AnalyzedRelation leftRelation,
-                                            Functions functions,
-                                            CoordinatorTxnCtx txnCtx,
-                                            @Nullable Row params) {
+                                            boolean hashJoinEnabled) {
         RelationName nextName = nextRel.relationName();
 
         JoinPair joinPair = removeMatch(joinPairs, joinNames, nextName);
@@ -221,7 +196,7 @@ public class JoinPlanBuilder {
             condition = joinPair.condition();
         }
 
-        LogicalPlan nextPlan = LogicalPlanner.plan(nextRel, subqueryPlanner, functions, txnCtx, hints, tableStats, params);
+        LogicalPlan nextPlan = plan.apply(nextRel);
         Symbol query = AndOperator.join(
             Stream.of(
                 removeMatch(queryParts, joinNames, nextName),
@@ -237,13 +212,12 @@ public class JoinPlanBuilder {
                 leftRelation,
                 nextRel,
                 query,
-                txnCtx.sessionContext(),
-                tableStats),
+                hashJoinEnabled),
             query
         );
     }
 
-    private static Symbol removeParts(Map<Set<QualifiedName>, Symbol> queryParts, QualifiedName lhsName, QualifiedName rhsName) {
+    private static Symbol removeParts(Map<Set<RelationName>, Symbol> queryParts, RelationName lhsName, RelationName rhsName) {
         // query parts can affect a single relation without being pushed down in the outer-join case
         Symbol left = queryParts.remove(Collections.singleton(lhsName));
         Symbol right = queryParts.remove(Collections.singleton(rhsName));

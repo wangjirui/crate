@@ -46,7 +46,6 @@ import io.crate.planner.distribution.DistributionInfo;
 import io.crate.planner.distribution.DistributionType;
 import io.crate.planner.node.dql.join.Join;
 import io.crate.planner.node.dql.join.JoinType;
-import io.crate.statistics.TableStats;
 import org.elasticsearch.common.collect.Tuple;
 
 import javax.annotation.Nullable;
@@ -63,7 +62,6 @@ import static io.crate.planner.operators.LogicalPlanner.NO_LIMIT;
 public class HashJoin implements LogicalPlan {
 
     private final Symbol joinCondition;
-    private final TableStats tableStats;
     @VisibleForTesting
     final AnalyzedRelation concreteRelation;
     private final List<Symbol> outputs;
@@ -73,14 +71,12 @@ public class HashJoin implements LogicalPlan {
     public HashJoin(LogicalPlan lhs,
                     LogicalPlan rhs,
                     Symbol joinCondition,
-                    AnalyzedRelation concreteRelation,
-                    TableStats tableStats) {
+                    AnalyzedRelation concreteRelation) {
         this.outputs = Lists2.concat(lhs.outputs(), rhs.outputs());
         this.lhs = lhs;
         this.rhs = rhs;
         this.concreteRelation = concreteRelation;
         this.joinCondition = joinCondition;
-        this.tableStats = tableStats;
     }
 
     public JoinType joinType() {
@@ -232,8 +228,7 @@ public class HashJoin implements LogicalPlan {
             sources.get(0),
             sources.get(1),
             joinCondition,
-            concreteRelation,
-            tableStats
+            concreteRelation
         );
     }
 

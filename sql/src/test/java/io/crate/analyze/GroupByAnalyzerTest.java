@@ -287,7 +287,7 @@ public class GroupByAnalyzerTest extends CrateDummyClusterServiceUnitTest {
         assertThat(outerRelation.groupBy(), Matchers.empty());
         assertThat(outerRelation.orderBy().orderBySymbols(), contains(isField("id")));
 
-        AliasedAnalyzedRelation aliasedRelation = (AliasedAnalyzedRelation) outerRelation.from().get(1);
+        AliasedAnalyzedRelation aliasedRelation = (AliasedAnalyzedRelation) outerRelation.from().get(0);
         QueriedSelectRelation innerRelation = (QueriedSelectRelation) aliasedRelation.relation();
         assertThat(innerRelation.isDistinct(), is(true));
         assertThat(innerRelation.groupBy(), contains(isReference("id"), isReference("name")));

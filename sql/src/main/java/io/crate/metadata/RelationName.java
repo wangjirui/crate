@@ -103,10 +103,16 @@ public final class RelationName implements Writeable {
     }
 
     public String fqn() {
+        if (schema == null) {
+            return name;
+        }
         return schema + "." + name;
     }
 
     public String sqlFqn() {
+        if (schema == null) {
+            return Identifiers.quoteIfNeeded(name);
+        }
         return Identifiers.quoteIfNeeded(schema) + "." + Identifiers.quoteIfNeeded(name);
     }
 

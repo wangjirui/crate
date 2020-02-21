@@ -339,11 +339,13 @@ public class LogicalPlanner {
         @Override
         public LogicalPlan visitQueriedSelectRelation(QueriedSelectRelation relation, PlanBuilderContext context) {
             SplitPoints splitPoints = SplitPointsBuilder.create(relation);
-            var newCtx = new PlanBuilderContext(splitPoints.toCollect(), relation.where());
+            var newCtx = new PlanBuilderContext(splitPoints.toCollect(), WhereClause.MATCH_ALL);
             LogicalPlan source = JoinPlanBuilder.buildJoinTree(
                 relation.from(),
+                relation.where().queryOrFallback(),
                 relation.joinPairs(),
-                rel -> rel.accept(this, newCtx)
+                rel -> rel.accept(this, newCtx),
+                txnCtx.sessionContext().isHashJoinEnabled()
             );
             HavingClause having = relation.having();
             return
@@ -360,7 +362,9 @@ public class LogicalPlanner {
                                                 splitPoints.aggregates(),
                                                 tableStats
                                             ),
-                                            having == null ? null : context.whereClause.add(having.queryOrFallback())
+                                            having == null
+                                                ? context.whereClause
+                                                : context.whereClause.add(having.queryOrFallback())
                                         ),
                                         splitPoints.windowFunctions()
                                     ),

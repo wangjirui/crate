@@ -45,6 +45,9 @@ final class JoinOrdering {
     static Collection<RelationName> getOrderedRelationNames(Collection<RelationName> sourceRelations,
                                                              Set<? extends Set<RelationName>> explicitJoinConditions,
                                                              Set<? extends Set<RelationName>> implicitJoinConditions) {
+        if (sourceRelations.size() == 2) {
+            return sourceRelations;
+        }
         if (explicitJoinConditions.isEmpty() && implicitJoinConditions.isEmpty()) {
             return sourceRelations;
         }
@@ -96,7 +99,7 @@ final class JoinOrdering {
 
     @VisibleForTesting
     static Set<RelationName> findAndRemoveFirstJoinPair(ObjectIntHashMap<RelationName> occurrences,
-                                                         Collection<Set<RelationName>> joinPairs) {
+                                                        Collection<Set<RelationName>> joinPairs) {
         Iterator<Set<RelationName>> setsIterator = joinPairs.iterator();
         while (setsIterator.hasNext()) {
             Set<RelationName> set = setsIterator.next();
