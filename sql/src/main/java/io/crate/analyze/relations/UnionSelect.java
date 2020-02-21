@@ -22,10 +22,13 @@
 
 package io.crate.analyze.relations;
 
+import io.crate.exceptions.ColumnUnknownException;
 import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.Symbols;
+import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.RelationName;
+import io.crate.metadata.table.Operation;
 import org.elasticsearch.common.UUIDs;
 
 import javax.annotation.Nonnull;
@@ -68,6 +71,11 @@ public class UnionSelect implements AnalyzedRelation {
     @Override
     public <C, R> R accept(AnalyzedRelationVisitor<C, R> visitor, C context) {
         return visitor.visitUnionSelect(this, context);
+    }
+
+    @Override
+    public Symbol getField(ColumnIdent column, Operation operation) throws UnsupportedOperationException, ColumnUnknownException {
+        return Fields.getFromSourceWithNewScope(name, column, operation, left);
     }
 
     @Override

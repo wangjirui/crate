@@ -23,11 +23,13 @@ package io.crate.analyze;
 
 import io.crate.analyze.relations.AnalyzedRelation;
 import io.crate.analyze.relations.AnalyzedRelationVisitor;
+import io.crate.exceptions.ColumnUnknownException;
 import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.RelationName;
 import io.crate.metadata.doc.DocTableInfo;
+import io.crate.metadata.table.Operation;
 import io.crate.types.DataTypes;
 
 import javax.annotation.Nonnull;
@@ -59,6 +61,11 @@ public class AnalyzedShowCreateTable implements AnalyzedStatement, AnalyzedRelat
     @Override
     public <C, R> R accept(AnalyzedRelationVisitor<C, R> visitor, C context) {
         return visitor.process(this, context);
+    }
+
+    @Override
+    public Symbol getField(ColumnIdent column, Operation operation) throws UnsupportedOperationException, ColumnUnknownException {
+        throw new UnsupportedOperationException("Cannot use getField on " + getClass().getSimpleName());
     }
 
     @Override

@@ -97,12 +97,9 @@ public class RelationAnalysisContext {
     }
 
     void addSourceRelation(AnalyzedRelation relation) {
-        if (sources.put(relation.relationName(), relation) != null) {
-            String tableName = relation.relationName().name();
-            if (tableName.startsWith(".")) {
-                tableName = tableName.substring(1);
-            }
-            String errorMessage = String.format(Locale.ENGLISH, "\"%s\" specified more than once in the FROM clause", tableName);
+        RelationName relationName = relation.relationName();
+        if (sources.put(relationName, relation) != null) {
+            String errorMessage = String.format(Locale.ENGLISH, "\"%s\" specified more than once in the FROM clause", relationName);
             throw new IllegalArgumentException(errorMessage);
         }
     }

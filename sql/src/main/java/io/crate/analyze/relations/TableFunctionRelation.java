@@ -22,10 +22,15 @@
 
 package io.crate.analyze.relations;
 
+import io.crate.exceptions.AmbiguousColumnException;
+import io.crate.exceptions.ColumnUnknownException;
+import io.crate.expression.scalar.SubscriptFunctions;
 import io.crate.expression.symbol.Function;
 import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
+import io.crate.expression.symbol.Symbols;
 import io.crate.expression.symbol.format.SymbolPrinter;
+import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.FunctionName;
 import io.crate.metadata.Reference;
 import io.crate.metadata.ReferenceIdent;
@@ -34,6 +39,7 @@ import io.crate.metadata.RowGranularity;
 import io.crate.metadata.table.Operation;
 import io.crate.metadata.tablefunctions.TableFunctionImplementation;
 import io.crate.types.DataType;
+import io.crate.types.ObjectType;
 import io.crate.types.RowType;
 
 import javax.annotation.Nonnull;
@@ -77,6 +83,37 @@ public class TableFunctionRelation implements AnalyzedRelation, FieldResolver {
     @Override
     public <C, R> R accept(AnalyzedRelationVisitor<C, R> visitor, C context) {
         return visitor.visitTableFunctionRelation(this, context);
+    }
+
+    @Override
+    public Symbol getField(ColumnIdent column, Operation operation) throws UnsupportedOperationException, ColumnUnknownException {
+        Symbol match = null;
+        for (Symbol output : outputs) {
+            ColumnIdent outputColumn = Symbols.pathFromSymbol(output);
+            if (column.equals(outputColumn)) {
+                if (match != null) {
+                    throw new AmbiguousColumnException(column, output);
+                }
+                match = output;
+            }
+        }
+        if (match != null || column.isTopLevel()) {
+            return match;
+        }
+        ColumnIdent rootColumn = column.getRoot();
+        for (Symbol output : outputs) {
+            ColumnIdent outputRoot = Symbols.pathFromSymbol(output).getRoot();
+            if (output.valueType().id() == ObjectType.ID && rootColumn.equals(outputRoot)) {
+                if (match != null) {
+                    throw new AmbiguousColumnException(column, output);
+                }
+                match = output;
+            }
+        }
+        if (match == null) {
+            return null;
+        }
+        return SubscriptFunctions.makeObjectSubscript(match, column);
     }
 
     @Override

@@ -23,19 +23,11 @@ package io.crate.analyze.relations;
 
 import io.crate.analyze.AnalyzedStatement;
 import io.crate.analyze.AnalyzedStatementVisitor;
-import io.crate.common.collections.Lists2;
-import io.crate.exceptions.AmbiguousColumnException;
 import io.crate.exceptions.ColumnUnknownException;
-import io.crate.expression.scalar.SubscriptObjectFunction;
-import io.crate.expression.symbol.Function;
-import io.crate.expression.symbol.Literal;
 import io.crate.expression.symbol.Symbol;
-import io.crate.expression.symbol.Symbols;
 import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.RelationName;
 import io.crate.metadata.table.Operation;
-import io.crate.types.DataType;
-import io.crate.types.ObjectType;
 
 import javax.annotation.Nonnull;
 import java.util.List;
@@ -63,31 +55,7 @@ public interface AnalyzedRelation extends AnalyzedStatement {
 
     <C, R> R accept(AnalyzedRelationVisitor<C, R> visitor, C context);
 
-    default Symbol getField(ColumnIdent column, Operation operation) throws UnsupportedOperationException, ColumnUnknownException {
-        if (operation != Operation.READ) {
-            throw new UnsupportedOperationException(operation + " is not supported on " + getClass().getSimpleName());
-        }
-        Symbol match = null;
-        for (Symbol output : outputs()) {
-            if (Symbols.pathFromSymbol(output).equals(column)) {
-                if (match != null) {
-                    throw new AmbiguousColumnException(column, output);
-                }
-                match = output;
-            }
-        }
-        if (match == null && !column.isTopLevel()) {
-            ColumnIdent root = column.getRoot();
-            for (Symbol output : outputs()) {
-                if (output.valueType().id() == ObjectType.ID && Symbols.pathFromSymbol(output).equals(root)) {
-                    List<Symbol> arguments = Lists2.mapTail(output, column.path(), Literal::of);
-                    DataType<?> returnType = ((ObjectType) output.valueType()).resolveInnerType(column.path());
-                    return Function.of(SubscriptObjectFunction.NAME, arguments, returnType);
-                }
-            }
-        }
-        return match;
-    }
+    Symbol getField(ColumnIdent column, Operation operation) throws UnsupportedOperationException, ColumnUnknownException;
 
     RelationName relationName();
 

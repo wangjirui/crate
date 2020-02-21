@@ -25,6 +25,7 @@ import io.crate.common.collections.Lists2;
 import io.crate.expression.symbol.Function;
 import io.crate.expression.symbol.Literal;
 import io.crate.expression.symbol.Symbol;
+import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.FunctionIdent;
 import io.crate.metadata.FunctionInfo;
 import io.crate.types.DataType;
@@ -36,6 +37,14 @@ import javax.annotation.Nullable;
 import java.util.List;
 
 public final class SubscriptFunctions {
+
+    public static Function makeObjectSubscript(Symbol base, ColumnIdent column) {
+        assert base.valueType().id() == ObjectType.ID
+            : "makeObjectSubscript only works on base symbols of type `object`";
+        List<Symbol> arguments = Lists2.mapTail(base, column.path(), Literal::of);
+        DataType<?> returnType = ((ObjectType) base.valueType()).resolveInnerType(column.path());
+        return Function.of(SubscriptObjectFunction.NAME, arguments, returnType);
+    }
 
     @Nullable
     public static Function tryCreateSubscript(Symbol baseSymbol, List<String> path) {

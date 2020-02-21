@@ -22,11 +22,13 @@
 
 package io.crate.analyze.relations;
 
+import io.crate.exceptions.ColumnUnknownException;
 import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.Symbols;
 import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.RelationName;
+import io.crate.metadata.table.Operation;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -71,6 +73,27 @@ public class AliasedAnalyzedRelation implements AnalyzedRelation, FieldResolver 
         }
     }
 
+    @Override
+    public Symbol getField(ColumnIdent column, Operation operation) throws UnsupportedOperationException, ColumnUnknownException {
+        Symbol symbol = Fields.getFromSourceWithNewScope(alias, column, operation, relation);
+        if (symbol == null) {
+            ColumnIdent columnNameInSource = aliasToColumnMapping.get(column);
+            if (columnNameInSource == null) {
+                if (column.isTopLevel()) {
+                    return null;
+                } else {
+                    ColumnIdent rootColumnNameInSource = aliasToColumnMapping.get(column.getRoot());
+                    if (rootColumnNameInSource == null) {
+                        return null;
+                    }
+                    columnNameInSource = new ColumnIdent(rootColumnNameInSource.name(), column.path());
+                }
+            }
+            return Fields.getFromSourceWithNewScope(alias, columnNameInSource, operation, relation);
+        }
+        return symbol;
+    }
+
     public AnalyzedRelation relation() {
         return relation;
     }
@@ -99,10 +122,9 @@ public class AliasedAnalyzedRelation implements AnalyzedRelation, FieldResolver 
     @Nullable
     @Override
     public Symbol resolveField(ScopedSymbol field) {
-        var idx = outputs.indexOf(field);
-        if (idx < 0) {
+        if (!field.relation().equals(alias)) {
             throw new IllegalArgumentException(field + " does not belong to " + relationName());
         }
-        return relation.outputs().get(idx);
+        return relation.getField(field.column(), Operation.READ);
     }
 }

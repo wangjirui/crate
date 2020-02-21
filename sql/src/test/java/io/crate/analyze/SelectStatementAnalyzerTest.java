@@ -53,6 +53,7 @@ import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.SymbolType;
 import io.crate.expression.symbol.Symbols;
 import io.crate.metadata.FunctionInfo;
+import io.crate.metadata.RelationName;
 import io.crate.metadata.sys.SysNodesTableInfo;
 import io.crate.sql.parser.ParsingException;
 import io.crate.test.integration.CrateDummyClusterServiceUnitTest;
@@ -69,6 +70,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
+import static io.crate.testing.RelationMatchers.isDocTable;
 import static io.crate.testing.SymbolMatchers.isAlias;
 import static io.crate.testing.SymbolMatchers.isField;
 import static io.crate.testing.SymbolMatchers.isFunction;
@@ -128,11 +130,11 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
             .addTable("create table third.t1 (id int)")
             .build();
 
-        AnalyzedRelation queriedTable = executor.analyze("select * from t");
-        assertThat(queriedTable.relationName().schema(), is("first"));
+        QueriedSelectRelation queriedTable = executor.analyze("select * from t");
+        assertThat(queriedTable.from(), contains(isDocTable(new RelationName("first", "t"))));
 
         queriedTable = executor.analyze("select * from t1");
-        assertThat(queriedTable.relationName().schema(), is("third"));
+        assertThat(queriedTable.from(), contains(isDocTable(new RelationName("third", "t1"))));
     }
 
     @Test
@@ -1753,20 +1755,31 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
         String sqlFields = "col1, col2, col3, col4, " +
                            "col5, col6, col7, col8, " +
                            "col9, col10, col11";
-        assertThat(relation.outputs(), isSQL(sqlFields));
+        assertThat(relation.outputs(), contains(
+            isReference("col1"),
+            isReference("col2"),
+            isReference("col3"),
+            isReference("col4"),
+            isReference("col5"),
+            isReference("col6"),
+            isReference("col7"),
+            isReference("col8"),
+            isReference("col9"),
+            isReference("col10"),
+            isReference("col11")
+        ));
     }
 
     @Test
     public void testUnnestWithObjectColumn() {
-        expectedException.expect(ColumnUnknownException.class);
-        expectedException.expectMessage("Column col1['x'] unknown");
-        analyze("select col1['x'] from unnest([{x=1}])");
+        QueriedSelectRelation rel = analyze("select col1['x'] from unnest([{x=1}])");
+        assertThat(rel.outputs(), contains(isFunction("subscript_obj", isReference("col1"), isLiteral("x"))));
     }
 
     @Test
     public void testScalarCanBeUsedInFromClause() {
         QueriedSelectRelation relation = analyze("select * from abs(1)");
-        assertThat(relation.outputs(), isSQL("abs"));
+        assertThat(relation.outputs(), contains(isReference("abs")));
         assertThat(relation.from().get(0), instanceOf(TableFunctionRelation.class));
     }
 
@@ -1835,7 +1848,9 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
     @Test
     public void testColumnOutputWithSingleRowSubselect() {
         AnalyzedRelation relation = analyze("select 1 = \n (select \n 2\n)\n");
-        assertThat(relation.outputs(), isSQL("\"(1 = (SELECT 2))\""));
+        assertThat(relation.outputs(), contains(
+            isFunction("op_=", isLiteral(1L), instanceOf(SelectSymbol.class)))
+        );
     }
 
     @Test
@@ -1900,13 +1915,11 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
 
     @Test
     public void test_element_within_object_array_of_derived_table_can_be_accessed_using_subscript() {
-        AnalyzedRelation relation = analyze("select s.friends['id'] from (select friends from doc.users) s");
-        fail("todo");
-        /*
-        assertThat(relation.outputs().get(0),
-                   fieldPointsToReferenceOf("friends['id']", "doc.users"));
-
-         */
+        QueriedSelectRelation relation = analyze("select s.friends['id'] from (select friends from doc.users) s");
+        assertThat(
+            relation.outputs(),
+            contains(isField("friends['id']"))
+        );
     }
 
     @Test

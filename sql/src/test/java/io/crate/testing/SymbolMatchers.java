@@ -80,7 +80,7 @@ public class SymbolMatchers {
     }
 
     public static Matcher<Symbol> isField(final String expectedName, @Nullable final DataType<?> dataType) {
-        var hasExpectedName = withFeature(s -> ((ScopedSymbol) s).column().sqlFqn(), "name", equalTo(expectedName));
+        var hasExpectedName = withFeature(s -> ((ScopedSymbol) s).column().sqlFqn(), "", equalTo(expectedName));
         if (dataType == null) {
             return both(Matchers.<Symbol>instanceOf(ScopedSymbol.class)).and(hasExpectedName);
         }

@@ -22,10 +22,13 @@
 
 package io.crate.analyze.relations;
 
+import io.crate.exceptions.ColumnUnknownException;
 import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.Symbols;
+import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.RelationName;
+import io.crate.metadata.table.Operation;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -77,6 +80,11 @@ public final class AnalyzedView implements AnalyzedRelation, FieldResolver {
     }
 
     @Override
+    public Symbol getField(ColumnIdent column, Operation operation) throws UnsupportedOperationException, ColumnUnknownException {
+        return Fields.getFromSourceWithNewScope(name, column, operation, relation);
+    }
+
+    @Override
     public RelationName relationName() {
         return name;
     }
@@ -97,10 +105,9 @@ public final class AnalyzedView implements AnalyzedRelation, FieldResolver {
     @Nullable
     @Override
     public Symbol resolveField(ScopedSymbol field) {
-        var idx = outputSymbols.indexOf(field);
-        if (idx < 0) {
-            throw new IllegalArgumentException(field + " does not belong to " + relationName());
+        if (!field.relation().equals(name)) {
+            throw new IllegalArgumentException(field + " does not belong to " + name);
         }
-        return relation.outputs().get(idx);
+        return relation.getField(field.column(), Operation.READ);
     }
 }
