@@ -28,13 +28,11 @@ import io.crate.analyze.relations.JoinPair;
 import io.crate.common.collections.Lists2;
 import io.crate.exceptions.AmbiguousColumnException;
 import io.crate.exceptions.ColumnUnknownException;
-import io.crate.expression.scalar.SubscriptFunctions;
 import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.Symbols;
 import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.RelationName;
 import io.crate.metadata.table.Operation;
-import io.crate.types.ObjectType;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -74,23 +72,7 @@ public class QueriedSelectRelation implements AnalyzedRelation {
                 match = field;
             }
         }
-        if (match != null || column.isTopLevel()) {
-            return match;
-        }
-        ColumnIdent rootColumn = column.getRoot();
-        for (AnalyzedRelation analyzedRelation : from) {
-            Symbol field = analyzedRelation.getField(rootColumn, operation);
-            if (field != null && field.valueType().id() == ObjectType.ID) {
-                if (match != null) {
-                    throw new AmbiguousColumnException(column, field);
-                }
-                match = field;
-            }
-        }
-        if (match == null) {
-            return null;
-        }
-        return SubscriptFunctions.makeObjectSubscript(match, column);
+        return match;
     }
 
     public boolean isDistinct() {

@@ -39,7 +39,7 @@ public class UnionSelect implements AnalyzedRelation {
 
     private final AnalyzedRelation left;
     private final AnalyzedRelation right;
-    private final List<Symbol> outputs;
+    private final List<ScopedSymbol> outputs;
     private final RelationName name;
 
     public UnionSelect(AnalyzedRelation left, AnalyzedRelation right) {
@@ -48,7 +48,7 @@ public class UnionSelect implements AnalyzedRelation {
         this.name = new RelationName(null, UUIDs.randomBase64UUID());
 
         List<Symbol> fieldsFromLeft = left.outputs();
-        ArrayList<Symbol> outputs = new ArrayList<>(fieldsFromLeft.size());
+        ArrayList<ScopedSymbol> outputs = new ArrayList<>(fieldsFromLeft.size());
         for (Symbol field : fieldsFromLeft) {
             // Creating a field that points to the field of the left relation isn't 100% accurate.
             // We're pointing to *two* symbols (both left AND right).
@@ -75,7 +75,12 @@ public class UnionSelect implements AnalyzedRelation {
 
     @Override
     public Symbol getField(ColumnIdent column, Operation operation) throws UnsupportedOperationException, ColumnUnknownException {
-        return Fields.getFromSourceWithNewScope(name, column, operation, left);
+        for (var output : outputs) {
+            if (output.column().equals(column)) {
+                return output;
+            }
+        }
+        return null;
     }
 
     @Override
@@ -86,7 +91,7 @@ public class UnionSelect implements AnalyzedRelation {
     @Nonnull
     @Override
     public List<Symbol> outputs() {
-        return outputs;
+        return (List<Symbol>)(List) outputs;
     }
 
     @Override

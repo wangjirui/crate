@@ -38,12 +38,16 @@ import java.util.List;
 
 public final class SubscriptFunctions {
 
-    public static Function makeObjectSubscript(Symbol base, ColumnIdent column) {
+    public static Function makeObjectSubscript(Symbol base, List<String> path) {
         assert base.valueType().id() == ObjectType.ID
-            : "makeObjectSubscript only works on base symbols of type `object`";
-        List<Symbol> arguments = Lists2.mapTail(base, column.path(), Literal::of);
-        DataType<?> returnType = ((ObjectType) base.valueType()).resolveInnerType(column.path());
+            : "makeObjectSubscript only works on base symbols of type `object`, got `" + base.valueType().getName() + '`';
+        List<Symbol> arguments = Lists2.mapTail(base, path, Literal::of);
+        DataType<?> returnType = ((ObjectType) base.valueType()).resolveInnerType(path);
         return Function.of(SubscriptObjectFunction.NAME, arguments, returnType);
+    }
+
+    public static Function makeObjectSubscript(Symbol base, ColumnIdent column) {
+        return makeObjectSubscript(base, column.path());
     }
 
     @Nullable

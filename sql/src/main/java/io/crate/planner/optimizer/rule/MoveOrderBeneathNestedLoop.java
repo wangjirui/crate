@@ -24,8 +24,10 @@ package io.crate.planner.optimizer.rule;
 
 import io.crate.analyze.OrderBy;
 import io.crate.expression.symbol.FieldsVisitor;
+import io.crate.expression.symbol.RefVisitor;
 import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
+import io.crate.metadata.Reference;
 import io.crate.metadata.RelationName;
 import io.crate.metadata.TransactionContext;
 import io.crate.planner.operators.LogicalPlan;
@@ -82,10 +84,12 @@ public final class MoveOrderBeneathNestedLoop implements Rule<Order> {
         NestedLoopJoin nestedLoop = captures.get(nlCapture);
         Set<RelationName> relationsInOrderBy =
             Collections.newSetFromMap(new IdentityHashMap<>());
-        Consumer<ScopedSymbol> gatherRelations = f -> relationsInOrderBy.add(f.relation());
+        Consumer<ScopedSymbol> gatherRelationsFromField = f -> relationsInOrderBy.add(f.relation());
+        Consumer<Reference> gatherRelationsFromRef = r -> relationsInOrderBy.add(r.ident().tableIdent());
         OrderBy orderBy = order.orderBy();
         for (Symbol orderExpr : orderBy.orderBySymbols()) {
-            FieldsVisitor.visitFields(orderExpr, gatherRelations);
+            FieldsVisitor.visitFields(orderExpr, gatherRelationsFromField);
+            RefVisitor.visitRefs(orderExpr, gatherRelationsFromRef);
         }
         if (relationsInOrderBy.size() == 1) {
             RelationName relationInOrderBy = relationsInOrderBy.iterator().next();

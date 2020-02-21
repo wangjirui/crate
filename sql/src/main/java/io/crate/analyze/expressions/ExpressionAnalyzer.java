@@ -664,7 +664,16 @@ public class ExpressionAnalyzer {
                 }
             } else {
                 Symbol name;
-                name = fieldProvider.resolveField(qualifiedName, parts, operation);
+                try {
+                    name = fieldProvider.resolveField(qualifiedName, parts, operation);
+                } catch (ColumnUnknownException e) {
+                    try {
+                        Symbol base = fieldProvider.resolveField(qualifiedName, List.of(), operation);
+                        name = SubscriptFunctions.makeObjectSubscript(base, parts);
+                    } catch (ColumnUnknownException e2) {
+                        throw e;
+                    }
+                }
                 Expression idxExpression = subscriptContext.index();
                 if (idxExpression != null) {
                     Symbol index = idxExpression.accept(this, context);

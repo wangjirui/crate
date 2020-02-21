@@ -130,12 +130,10 @@ public class PushDownTest extends CrateDummyClusterServiceUnitTest {
         LogicalPlan plan = plan("select t2.y, t2.b, t1.i from t1 inner join t2 on t1.a = t2.b order by t1.x desc");
         assertThat(plan, isPlan(sqlExecutor.functions(), "Eval[y, b, i]\n" +
                                                          "NestedLoopJoin[\n" +
-                                                         "    Boundary[a, x, i]\n" +
                                                          "    OrderBy[x DESC]\n" +
-                                                         "    Collect[doc.t1 | [a, x, i] | true]\n" +
+                                                         "    Collect[doc.t1 | [i, x, a] | true]\n" +
                                                          "    --- INNER ---\n" +
-                                                         "    Boundary[b, y, i]\n" +
-                                                         "    Collect[doc.t2 | [b, y, i] | true]\n]" +
+                                                         "    Collect[doc.t2 | [y, b] | true]\n]" +
                                                          "\n"));
     }
 
@@ -188,16 +186,13 @@ public class PushDownTest extends CrateDummyClusterServiceUnitTest {
                                                          "OrderBy[a ASC]\n" +
                                                          "NestedLoopJoin[\n" +
                                                          "    NestedLoopJoin[\n" +
-                                                         "        Boundary[b, y, i]\n" +
-                                                         "        Collect[doc.t2 | [b, y, i] | true]\n" +
+                                                         "        Collect[doc.t2 | [b] | true]\n" +
                                                          "        --- INNER ---\n" +
-                                                         "        Boundary[a, x, i]\n" +
-                                                         "        Collect[doc.t1 | [a, x, i] | true]\n" +
+                                                         "        Collect[doc.t1 | [a] | true]\n" +
                                                          "]\n" +
                                                          "    --- LEFT ---\n" +
-                                                         "    Boundary[a, x, i]\n" +
-                                                         "    Boundary[a, x, i]\n" +
-                                                         "    Collect[doc.t1 | [a, x, i] | true]\n" +
+                                                         "    Rename[a] AS t3\n" +
+                                                         "    Collect[doc.t1 | [a] | true]\n" +
                                                          "]\n"));
     }
 
@@ -338,11 +333,11 @@ public class PushDownTest extends CrateDummyClusterServiceUnitTest {
             plan,
             LogicalPlannerTest.isPlan(sqlExecutor.functions(),
                 "RootBoundary[name]\n" +
-                "Boundary[name]\n" +    // Aliased relation boundary
+                "Rename[name] AS u\n" +    // Aliased relation boundary
                 "Union[\n" +
-                "Collect[sys.nodes | [name] | ((name LIKE 'b%') AND (name LIKE 'c%'))]\n" +
+                "Collect[sys.nodes | [name] | ((name LIKE 'c%') AND (name LIKE 'b%'))]\n" +
                 "---\n" +
-                "Collect[sys.cluster | [substr(name, 0, 1)] | ((name LIKE 'a%') AND (substr(name, 0, 1) LIKE 'c%'))]\n]\n"
+                "Collect[sys.cluster | [substr(name, 0, 1) AS n] | ((substr(name, 0, 1) AS n LIKE 'c%') AND (name LIKE 'a%'))]\n]\n"
             )
         );
     }

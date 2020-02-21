@@ -77,6 +77,7 @@ import io.crate.planner.optimizer.rule.MoveFilterBeneathUnion;
 import io.crate.planner.optimizer.rule.MoveFilterBeneathWindowAgg;
 import io.crate.planner.optimizer.rule.MoveOrderBeneathFetchOrEval;
 import io.crate.planner.optimizer.rule.MoveOrderBeneathNestedLoop;
+import io.crate.planner.optimizer.rule.MoveOrderBeneathRename;
 import io.crate.planner.optimizer.rule.MoveOrderBeneathUnion;
 import io.crate.planner.optimizer.rule.RemoveRedundantFetchOrEval;
 import io.crate.planner.optimizer.rule.RewriteCollectToGet;
@@ -85,7 +86,6 @@ import io.crate.planner.optimizer.rule.RewriteGroupByKeysLimitToTopNDistinct;
 import io.crate.statistics.TableStats;
 import org.elasticsearch.Version;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -131,6 +131,7 @@ public class LogicalPlanner {
                 new MoveOrderBeneathUnion(),
                 new MoveOrderBeneathNestedLoop(),
                 new MoveOrderBeneathFetchOrEval(),
+                new MoveOrderBeneathRename(),
                 new DeduplicateOrder(),
                 new RewriteCollectToGet(functions),
                 new RewriteGroupByKeysLimitToTopNDistinct()
@@ -348,7 +349,8 @@ public class LogicalPlanner {
                     if (relation.from().size() == 1) {
                         return rel.accept(this, new PlanBuilderContext(splitPoints.toCollect(), WhereClause.MATCH_ALL));
                     } else {
-                        ArrayList<Symbol> toCollect = new ArrayList<>(splitPoints.toCollect().size());
+                        // TODO: Get rid of this
+                        var toCollect = new LinkedHashSet<Symbol>(splitPoints.toCollect().size());
                         Consumer<Reference> addRefIfMatch = ref -> {
                             if (ref.ident().tableIdent().equals(rel.relationName())) {
                                 toCollect.add(ref);
@@ -363,7 +365,16 @@ public class LogicalPlanner {
                             RefVisitor.visitRefs(symbol, addRefIfMatch);
                             FieldsVisitor.visitFields(symbol, addFieldIfMatch);
                         }
-                        return rel.accept(this, new PlanBuilderContext(toCollect, WhereClause.MATCH_ALL));
+                        FieldsVisitor.visitFields(relation.where().queryOrFallback(), addFieldIfMatch);
+                        RefVisitor.visitRefs(relation.where().queryOrFallback(), addRefIfMatch);
+                        for (var joinPair : relation.joinPairs()) {
+                            var condition = joinPair.condition();
+                            if (condition != null) {
+                                FieldsVisitor.visitFields(condition, addFieldIfMatch);
+                                RefVisitor.visitRefs(condition, addRefIfMatch);
+                            }
+                        }
+                        return rel.accept(this, new PlanBuilderContext(List.copyOf(toCollect), WhereClause.MATCH_ALL));
                     }
                 },
                 txnCtx.sessionContext().isHashJoinEnabled()

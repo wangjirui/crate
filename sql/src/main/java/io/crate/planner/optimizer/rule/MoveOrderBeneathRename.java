@@ -22,31 +22,52 @@
 
 package io.crate.planner.optimizer.rule;
 
+import io.crate.expression.symbol.FieldReplacer;
 import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.TransactionContext;
 import io.crate.statistics.TableStats;
 import io.crate.planner.operators.LogicalPlan;
 import io.crate.planner.operators.Order;
-import io.crate.planner.operators.Union;
+import io.crate.planner.operators.Rename;
 import io.crate.planner.optimizer.Rule;
 import io.crate.planner.optimizer.matcher.Capture;
 import io.crate.planner.optimizer.matcher.Captures;
 import io.crate.planner.optimizer.matcher.Pattern;
 
 import java.util.List;
+import java.util.function.Function;
 
 import static io.crate.planner.optimizer.matcher.Pattern.typeOf;
 import static io.crate.planner.optimizer.matcher.Patterns.source;
 
-public final class MoveOrderBeneathUnion implements Rule<Order> {
+/**
+ * <pre>
+ *     Order
+ *       |
+ *     Rename
+ *       |
+ *     Source
+ * </pre>
+ *
+ * to
+ *
+ * <pre>
+ *     Rename
+ *       |
+ *     Order
+ *       |
+ *     Source
+ * </pre>
+ */
+public final class MoveOrderBeneathRename implements Rule<Order> {
 
-    private final Capture<Union> unionCapture;
+    private final Capture<Rename> renameCapture;
     private final Pattern<Order> pattern;
 
-    public MoveOrderBeneathUnion() {
-        this.unionCapture = new Capture<>();
+    public MoveOrderBeneathRename() {
+        this.renameCapture = new Capture<>();
         this.pattern = typeOf(Order.class)
-            .with(source(), typeOf(Union.class).capturedAs(unionCapture));
+            .with(source(), typeOf(Rename.class).capturedAs(renameCapture));
     }
 
     @Override
@@ -55,27 +76,13 @@ public final class MoveOrderBeneathUnion implements Rule<Order> {
     }
 
     @Override
-    public LogicalPlan apply(Order order,
+    public LogicalPlan apply(Order plan,
                              Captures captures,
                              TableStats tableStats,
                              TransactionContext txnCtx) {
-        Union union = captures.get(unionCapture);
-        List<LogicalPlan> unionSources = union.sources();
-        assert unionSources.size() == 2 : "A UNION must have exactly 2 unionSources";
-        Order lhsOrder = updateSources(order, unionSources.get(0));
-        Order rhsOrder = updateSources(order, unionSources.get(1));
-        return union.replaceSources(List.of(lhsOrder, rhsOrder));
-    }
-
-    private static Order updateSources(Order order, LogicalPlan child) {
-        List<Symbol> sourceOutputs = order.source().outputs();
-        return new Order(child, order.orderBy().map(s -> {
-            int idx = sourceOutputs.indexOf(s);
-            if (idx < 0) {
-                throw new IllegalArgumentException(
-                    "The ORDER BY expression " + s + " must be part of the child union: " + sourceOutputs);
-            }
-            return child.outputs().get(idx);
-        }));
+        Rename rename = captures.get(renameCapture);
+        Function<? super Symbol, ? extends Symbol> mapField = FieldReplacer.bind(rename::resolveField);
+        Order newOrder = new Order(rename.source(), plan.orderBy().map(mapField));
+        return rename.replaceSources(List.of(newOrder));
     }
 }

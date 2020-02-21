@@ -140,7 +140,7 @@ public final class SymbolPrinter {
 
         @Override
         public Void visitAlias(AliasSymbol aliasSymbol, Void context) {
-            builder.append(aliasSymbol.symbol());
+            aliasSymbol.symbol().accept(this, null);
             builder.append(" AS ");
             builder.append(aliasSymbol.alias());
             return null;

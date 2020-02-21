@@ -68,6 +68,7 @@ public class AliasedAnalyzedRelation implements AnalyzedRelation, FieldResolver 
                 aliasToColumnMapping.put(columnAlias, childColumn);
                 outputs.add(new ScopedSymbol(this.alias, columnAlias, childOutput.valueType()));
             } else {
+                aliasToColumnMapping.put(childColumn, childColumn);
                 outputs.add(new ScopedSymbol(alias, childColumn, childOutput.valueType()));
             }
         }
@@ -75,23 +76,17 @@ public class AliasedAnalyzedRelation implements AnalyzedRelation, FieldResolver 
 
     @Override
     public Symbol getField(ColumnIdent column, Operation operation) throws UnsupportedOperationException, ColumnUnknownException {
-        Symbol symbol = Fields.getFromSourceWithNewScope(alias, column, operation, relation);
-        if (symbol == null) {
-            ColumnIdent columnNameInSource = aliasToColumnMapping.get(column);
-            if (columnNameInSource == null) {
-                if (column.isTopLevel()) {
-                    return null;
-                } else {
-                    ColumnIdent rootColumnNameInSource = aliasToColumnMapping.get(column.getRoot());
-                    if (rootColumnNameInSource == null) {
-                        return null;
-                    }
-                    columnNameInSource = new ColumnIdent(rootColumnNameInSource.name(), column.path());
-                }
-            }
-            return Fields.getFromSourceWithNewScope(alias, columnNameInSource, operation, relation);
+        if (operation != Operation.READ) {
+            throw new UnsupportedOperationException(operation + " is not supported on " + alias);
         }
-        return symbol;
+        ColumnIdent childColumnName = aliasToColumnMapping.get(column);
+        if (childColumnName == null) {
+            return null;
+        }
+        Symbol field = relation.getField(childColumnName, operation);
+        return field == null
+            ? null
+            : new ScopedSymbol(alias, column, field.valueType());
     }
 
     public AnalyzedRelation relation() {
