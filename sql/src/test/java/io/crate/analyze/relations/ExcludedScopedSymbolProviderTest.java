@@ -26,6 +26,7 @@ import io.crate.analyze.ValuesResolver;
 import io.crate.expression.symbol.Literal;
 import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.metadata.ColumnIdent;
+import io.crate.metadata.RelationName;
 import io.crate.metadata.table.Operation;
 import io.crate.sql.tree.QualifiedName;
 import io.crate.types.DataTypes;
@@ -33,8 +34,6 @@ import org.junit.Test;
 
 import static io.crate.testing.SymbolMatchers.isField;
 import static io.crate.testing.SymbolMatchers.isLiteral;
-import static io.crate.testing.SymbolMatchers.isReference;
-import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
 
 public class ExcludedScopedSymbolProviderTest {
@@ -47,7 +46,7 @@ public class ExcludedScopedSymbolProviderTest {
 
         FieldProvider<?> fieldProvider = (qualifiedName, path, operation) ->
             new ScopedSymbol(
-                new QualifiedName("dummy"),
+                new RelationName("doc", "dummy"),
                 new ColumnIdent(qualifiedName.toString()),
                 DataTypes.INTEGER);
         ValuesResolver valuesResolver = argumentColumn -> {

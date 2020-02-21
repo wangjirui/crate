@@ -26,16 +26,11 @@ import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.Reference;
 import io.crate.metadata.table.Operation;
 import io.crate.metadata.table.TableInfo;
-import io.crate.sql.tree.QualifiedName;
 
 public class TableRelation extends AbstractTableRelation<TableInfo> {
 
     public TableRelation(TableInfo tableInfo) {
         super(tableInfo);
-    }
-
-    public TableRelation(TableInfo tableInfo, QualifiedName qualifiedName) {
-        super(tableInfo, qualifiedName);
     }
 
     @Override

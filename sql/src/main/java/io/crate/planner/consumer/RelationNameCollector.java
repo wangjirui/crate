@@ -26,29 +26,36 @@ import io.crate.expression.symbol.DefaultTraversalSymbolVisitor;
 import io.crate.expression.symbol.MatchPredicate;
 import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
-import io.crate.sql.tree.QualifiedName;
+import io.crate.metadata.Reference;
+import io.crate.metadata.RelationName;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-public class QualifiedNameCollector extends DefaultTraversalSymbolVisitor<Set<QualifiedName>, Void> {
+public class RelationNameCollector extends DefaultTraversalSymbolVisitor<Set<RelationName>, Void> {
 
-    private static final QualifiedNameCollector INSTANCE = new QualifiedNameCollector();
+    private static final RelationNameCollector INSTANCE = new RelationNameCollector();
 
-    public static Set<QualifiedName> collect(Symbol symbol) {
-        var names = new LinkedHashSet<QualifiedName>();
+    public static Set<RelationName> collect(Symbol symbol) {
+        var names = new LinkedHashSet<RelationName>();
         symbol.accept(INSTANCE, names);
         return names;
     }
 
     @Override
-    public Void visitField(ScopedSymbol field, Set<QualifiedName> context) {
+    public Void visitField(ScopedSymbol field, Set<RelationName> context) {
         context.add(field.relation());
         return null;
     }
 
     @Override
-    public Void visitMatchPredicate(MatchPredicate matchPredicate, Set<QualifiedName> context) {
+    public Void visitReference(Reference symbol, Set<RelationName> context) {
+        context.add(symbol.ident().tableIdent());
+        return null;
+    }
+
+    @Override
+    public Void visitMatchPredicate(MatchPredicate matchPredicate, Set<RelationName> context) {
         for (Symbol field : matchPredicate.identBoostMap().keySet()) {
             field.accept(this, context);
         }

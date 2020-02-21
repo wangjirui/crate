@@ -38,6 +38,7 @@ import io.crate.execution.engine.pipeline.TopN;
 import io.crate.expression.symbol.SelectSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.Symbols;
+import io.crate.metadata.RelationName;
 import io.crate.planner.ExecutionPlan;
 import io.crate.planner.PlannerContext;
 import io.crate.planner.ResultDescription;
@@ -45,7 +46,6 @@ import io.crate.planner.distribution.DistributionInfo;
 import io.crate.planner.distribution.DistributionType;
 import io.crate.planner.node.dql.join.Join;
 import io.crate.planner.node.dql.join.JoinType;
-import io.crate.sql.tree.QualifiedName;
 import io.crate.statistics.TableStats;
 import org.elasticsearch.common.collect.Tuple;
 
@@ -238,10 +238,10 @@ public class HashJoin implements LogicalPlan {
     }
 
     private Tuple<List<Symbol>, List<Symbol>> extractHashJoinSymbolsFromJoinSymbolsAndSplitPerSide(boolean switchedTables) {
-        Map<QualifiedName, List<Symbol>> hashJoinSymbols = HashJoinConditionSymbolsExtractor.extract(joinCondition);
+        Map<RelationName, List<Symbol>> hashJoinSymbols = HashJoinConditionSymbolsExtractor.extract(joinCondition);
 
         // First extract the symbols that belong to the concrete relation
-        List<Symbol> hashJoinSymbolsForConcreteRelation = hashJoinSymbols.remove(concreteRelation.getQualifiedName());
+        List<Symbol> hashJoinSymbolsForConcreteRelation = hashJoinSymbols.remove(concreteRelation.relationName());
 
         // All leftover extracted symbols belong to the other relation which might be a
         // "concrete" relation too but can already be a tree of relation.

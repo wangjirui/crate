@@ -25,7 +25,7 @@ package io.crate.analyze.relations;
 import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.Symbols;
-import io.crate.sql.tree.QualifiedName;
+import io.crate.metadata.RelationName;
 import org.elasticsearch.common.UUIDs;
 
 import javax.annotation.Nonnull;
@@ -37,12 +37,12 @@ public class UnionSelect implements AnalyzedRelation {
     private final AnalyzedRelation left;
     private final AnalyzedRelation right;
     private final List<Symbol> outputs;
-    private final QualifiedName name;
+    private final RelationName name;
 
     public UnionSelect(AnalyzedRelation left, AnalyzedRelation right) {
         this.left = left;
         this.right = right;
-        this.name = new QualifiedName(UUIDs.randomBase64UUID());
+        this.name = new RelationName(null, UUIDs.randomBase64UUID());
 
         List<Symbol> fieldsFromLeft = left.outputs();
         ArrayList<Symbol> outputs = new ArrayList<>(fieldsFromLeft.size());
@@ -71,7 +71,7 @@ public class UnionSelect implements AnalyzedRelation {
     }
 
     @Override
-    public QualifiedName getQualifiedName() {
+    public RelationName relationName() {
         return name;
     }
 
@@ -83,6 +83,6 @@ public class UnionSelect implements AnalyzedRelation {
 
     @Override
     public String toString() {
-        return "US{" + left.getQualifiedName().toString() + ',' + right.getQualifiedName().toString() + '}';
+        return "US{" + left.relationName().toString() + ',' + right.relationName().toString() + '}';
     }
 }

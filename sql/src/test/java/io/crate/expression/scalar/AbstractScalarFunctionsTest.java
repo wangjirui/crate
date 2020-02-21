@@ -21,7 +21,6 @@
 
 package io.crate.expression.scalar;
 
-import com.google.common.collect.ImmutableMap;
 import io.crate.action.sql.SessionContext;
 import io.crate.analyze.relations.AnalyzedRelation;
 import io.crate.analyze.relations.DocTableRelation;
@@ -45,7 +44,6 @@ import io.crate.metadata.TransactionContext;
 import io.crate.metadata.doc.DocSchemaInfo;
 import io.crate.metadata.doc.DocTableInfo;
 import io.crate.metadata.settings.SessionSettings;
-import io.crate.sql.tree.QualifiedName;
 import io.crate.test.integration.CrateDummyClusterServiceUnitTest;
 import io.crate.testing.SQLExecutor;
 import io.crate.testing.SqlExpressions;
@@ -69,7 +67,7 @@ public abstract class AbstractScalarFunctionsTest extends CrateDummyClusterServi
 
     protected SqlExpressions sqlExpressions;
     protected Functions functions;
-    protected Map<QualifiedName, AnalyzedRelation> tableSources;
+    protected Map<RelationName, AnalyzedRelation> tableSources;
     private TransactionContext txnCtx = CoordinatorTxnCtx.systemTransactionContext();
     private InputFactory inputFactory;
 
@@ -117,7 +115,7 @@ public abstract class AbstractScalarFunctionsTest extends CrateDummyClusterServi
             clusterService);
 
         DocTableRelation tableRelation = new DocTableRelation(tableInfo);
-        tableSources = ImmutableMap.of(new QualifiedName("users"), tableRelation);
+        tableSources = Map.of(tableInfo.ident(), tableRelation);
         sqlExpressions = new SqlExpressions(tableSources);
         functions = sqlExpressions.functions();
         inputFactory = new InputFactory(functions);

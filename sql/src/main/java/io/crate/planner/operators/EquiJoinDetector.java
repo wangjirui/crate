@@ -29,8 +29,8 @@ import io.crate.expression.symbol.Function;
 import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.SymbolVisitor;
+import io.crate.metadata.RelationName;
 import io.crate.planner.node.dql.join.JoinType;
-import io.crate.sql.tree.QualifiedName;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -67,7 +67,7 @@ public class EquiJoinDetector {
     private static class Context {
         boolean isHashJoinPossible = false;
         boolean insideEqOperator = false;
-        Set<QualifiedName> usedRelationsInsideEqOperatorArgument = new HashSet<>();
+        Set<RelationName> usedRelationsInsideEqOperatorArgument = new HashSet<>();
     }
 
     private static class Visitor extends SymbolVisitor<Context, Void> {
@@ -86,8 +86,7 @@ public class EquiJoinDetector {
                     context.insideEqOperator = true;
                     for (Symbol arg : function.arguments()) {
                         arg.accept(this, context);
-                        if (context.usedRelationsInsideEqOperatorArgument.isEmpty() ||
-                            context.usedRelationsInsideEqOperatorArgument.size() > 1) {
+                        if (context.usedRelationsInsideEqOperatorArgument.size() != 1) {
                             context.isHashJoinPossible = false;
                         }
                         context.usedRelationsInsideEqOperatorArgument = new HashSet<>();

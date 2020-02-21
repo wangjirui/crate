@@ -32,7 +32,7 @@ import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.Symbols;
 import io.crate.metadata.ColumnIdent;
-import io.crate.sql.tree.QualifiedName;
+import io.crate.metadata.RelationName;
 import io.crate.test.integration.CrateUnitTest;
 import io.crate.types.DataTypes;
 import org.elasticsearch.common.Strings;
@@ -52,9 +52,9 @@ public class RestActionReceiversTest extends CrateUnitTest {
         new RowN("foobar", 3, null)
     );
     private final List<Symbol> fields = ImmutableList.of(
-        new ScopedSymbol(new QualifiedName("dummy"), ColumnIdent.fromPath("doc.col_a"), DataTypes.STRING),
-        new ScopedSymbol(new QualifiedName("dummy"), ColumnIdent.fromPath("doc.col_b"), DataTypes.INTEGER),
-        new ScopedSymbol(new QualifiedName("dummy"), ColumnIdent.fromPath("doc.col_c"), DataTypes.BOOLEAN)
+        new ScopedSymbol(new RelationName("doc", "dummy"), ColumnIdent.fromPath("doc.col_a"), DataTypes.STRING),
+        new ScopedSymbol(new RelationName("doc", "dummy"), ColumnIdent.fromPath("doc.col_b"), DataTypes.INTEGER),
+        new ScopedSymbol(new RelationName("doc", "dummy"), ColumnIdent.fromPath("doc.col_c"), DataTypes.BOOLEAN)
     );
     private final Row row = new Row1(1L);
 

@@ -27,8 +27,8 @@ import io.crate.analyze.relations.AnalyzedRelationVisitor;
 import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.ColumnIdent;
+import io.crate.metadata.RelationName;
 import io.crate.metadata.table.Operation;
-import io.crate.sql.tree.QualifiedName;
 import io.crate.types.DataTypes;
 
 import java.util.HashSet;
@@ -41,7 +41,7 @@ import java.util.Set;
 public class DummyRelation implements AnalyzedRelation {
 
     private final Set<ColumnIdent> columnReferences = new HashSet<>();
-    private QualifiedName name = new QualifiedName("dummy");
+    private RelationName name = new RelationName("foo", "dummy");
 
     public DummyRelation(String... referenceNames) {
         for (String referenceName : referenceNames) {
@@ -63,7 +63,7 @@ public class DummyRelation implements AnalyzedRelation {
     }
 
     @Override
-    public QualifiedName getQualifiedName() {
+    public RelationName relationName() {
         return name;
     }
 

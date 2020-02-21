@@ -25,7 +25,7 @@ package io.crate.planner.operators;
 import com.carrotsearch.hppc.ObjectIntHashMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
-import io.crate.sql.tree.QualifiedName;
+import io.crate.metadata.RelationName;
 import io.crate.testing.T3;
 import org.junit.Test;
 
@@ -42,13 +42,13 @@ public class JoinOrderingTest {
     @Test
     public void testFindFirstJoinPair() {
         // SELECT * FROM t1, t2, t3 WHERE t1.id = t2.id AND t2.id = t3.id AND t3.id = t4.id
-        ObjectIntHashMap<QualifiedName> occurrences = new ObjectIntHashMap<>(4);
+        ObjectIntHashMap<RelationName> occurrences = new ObjectIntHashMap<>(4);
         occurrences.put(T3.T1, 1);
         occurrences.put(T3.T2, 1);
         occurrences.put(T3.T3, 3);
         occurrences.put(T3.T4, 1);
         @SuppressWarnings("unchecked")
-        Set<Set<QualifiedName>> sets = Sets.newHashSet(
+        Set<Set<RelationName>> sets = Sets.newHashSet(
             ImmutableSet.of(T3.T1, T3.T2),
             ImmutableSet.of(T3.T2, T3.T3),
             ImmutableSet.of(T3.T3, T3.T4)
@@ -59,24 +59,24 @@ public class JoinOrderingTest {
     @Test
     public void testFindFirstJoinPairOnlyOneOccurrence() {
         // SELECT * FROM t1, t2, t3 WHERE t1.id = t2.id AND t3.id = t4.id
-        ObjectIntHashMap<QualifiedName> occurrences = new ObjectIntHashMap<>(4);
+        ObjectIntHashMap<RelationName> occurrences = new ObjectIntHashMap<>(4);
         occurrences.put(T3.T1, 1);
         occurrences.put(T3.T2, 1);
         occurrences.put(T3.T3, 1);
         occurrences.put(T3.T4, 1);
-        Set<Set<QualifiedName>> sets = Sets.newLinkedHashSet();
-        sets.add(ImmutableSet.of(T3.T1, T3.T2));
-        sets.add(ImmutableSet.of(T3.T2, T3.T3));
-        sets.add(ImmutableSet.of(T3.T3, T3.T4));
-        assertThat(JoinOrdering.findAndRemoveFirstJoinPair(occurrences, sets), is(ImmutableSet.of(T3.T1, T3.T2)));
+        Set<Set<RelationName>> sets = Sets.newLinkedHashSet();
+        sets.add(Set.of(T3.T1, T3.T2));
+        sets.add(Set.of(T3.T2, T3.T3));
+        sets.add(Set.of(T3.T3, T3.T4));
+        assertThat(JoinOrdering.findAndRemoveFirstJoinPair(occurrences, sets), is(Set.of(T3.T1, T3.T2)));
     }
 
     @Test
     public void testOptimizeJoinNoPresort() throws Exception {
-        Collection<QualifiedName> qualifiedNames = JoinOrdering.orderByJoinConditions(
+        Collection<RelationName> qualifiedNames = JoinOrdering.orderByJoinConditions(
             Arrays.asList(T3.T1, T3.T2, T3.T3),
-            ImmutableSet.of(ImmutableSet.of(T3.T1, T3.T2)),
-            ImmutableSet.of(ImmutableSet.of(T3.T2, T3.T3))
+            Set.of(Set.of(T3.T1, T3.T2)),
+            Set.of(Set.of(T3.T2, T3.T3))
         );
         assertThat(qualifiedNames, contains(T3.T1, T3.T2, T3.T3));
     }

@@ -129,10 +129,10 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
             .build();
 
         AnalyzedRelation queriedTable = executor.analyze("select * from t");
-        assertThat(queriedTable.getQualifiedName().getParts().get(0), is("first"));
+        assertThat(queriedTable.relationName().schema(), is("first"));
 
         queriedTable = executor.analyze("select * from t1");
-        assertThat(queriedTable.getQualifiedName().getParts().get(0), is("third"));
+        assertThat(queriedTable.relationName().schema(), is("third"));
     }
 
     @Test

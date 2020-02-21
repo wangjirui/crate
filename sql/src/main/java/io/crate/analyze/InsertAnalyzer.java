@@ -45,6 +45,7 @@ import io.crate.metadata.CoordinatorTxnCtx;
 import io.crate.metadata.Functions;
 import io.crate.metadata.GeneratedReference;
 import io.crate.metadata.Reference;
+import io.crate.metadata.RelationName;
 import io.crate.metadata.RowGranularity;
 import io.crate.metadata.Schemas;
 import io.crate.metadata.doc.DocSysColumns;
@@ -54,7 +55,6 @@ import io.crate.sql.tree.Assignment;
 import io.crate.sql.tree.Expression;
 import io.crate.sql.tree.Insert;
 import io.crate.sql.tree.ParameterExpression;
-import io.crate.sql.tree.QualifiedName;
 import io.crate.types.DataType;
 import io.crate.types.DataTypes;
 
@@ -141,7 +141,7 @@ class InsertAnalyzer {
             returnValues = null;
         } else {
             var exprCtx = new ExpressionAnalysisContext();
-            Map<QualifiedName, AnalyzedRelation> sources = Map.of(tableRelation.getQualifiedName(), tableRelation);
+            Map<RelationName, AnalyzedRelation> sources = Map.of(tableRelation.relationName(), tableRelation);
             var sourceExprAnalyzer = new ExpressionAnalyzer(
                 functions,
                 txnCtx,

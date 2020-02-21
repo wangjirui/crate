@@ -21,7 +21,6 @@
 
 package io.crate.lucene;
 
-import com.google.common.collect.ImmutableMap;
 import io.crate.analyze.WhereClause;
 import io.crate.analyze.relations.AnalyzedRelation;
 import io.crate.analyze.relations.TableRelation;
@@ -31,7 +30,6 @@ import io.crate.lucene.match.CrateRegexQuery;
 import io.crate.metadata.RelationName;
 import io.crate.metadata.doc.DocSchemaInfo;
 import io.crate.metadata.doc.DocTableInfo;
-import io.crate.sql.tree.QualifiedName;
 import io.crate.testing.SQLExecutor;
 import io.crate.testing.SqlExpressions;
 import io.crate.types.DataType;
@@ -85,7 +83,7 @@ public class CommonQueryBuilderTest extends LuceneQueryBuilderTest {
                 clusterService);
 
             TableRelation tableRelation = new TableRelation(tableInfo);
-            Map<QualifiedName, AnalyzedRelation> tableSources = ImmutableMap.of(new QualifiedName(tableInfo.ident().name()), tableRelation);
+            Map<RelationName, AnalyzedRelation> tableSources = Map.of(tableInfo.ident(), tableRelation);
             SqlExpressions sqlExpressions = new SqlExpressions(tableSources, tableRelation, new Object[]{null}, User.CRATE_USER);
 
             Query query = convert(sqlExpressions.normalize(sqlExpressions.asSymbol("x = ?")));

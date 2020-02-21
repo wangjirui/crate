@@ -32,8 +32,8 @@ import io.crate.expression.symbol.Literal;
 import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.Symbols;
 import io.crate.metadata.ColumnIdent;
+import io.crate.metadata.RelationName;
 import io.crate.metadata.table.Operation;
-import io.crate.sql.tree.QualifiedName;
 import io.crate.types.DataType;
 import io.crate.types.ObjectType;
 
@@ -89,7 +89,7 @@ public interface AnalyzedRelation extends AnalyzedStatement {
         return match;
     }
 
-    QualifiedName getQualifiedName();
+    RelationName relationName();
 
     @Nonnull
     @Override

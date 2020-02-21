@@ -76,6 +76,7 @@ import io.crate.metadata.FunctionImplementation;
 import io.crate.metadata.FunctionInfo;
 import io.crate.metadata.Functions;
 import io.crate.metadata.Reference;
+import io.crate.metadata.RelationName;
 import io.crate.metadata.table.Operation;
 import io.crate.sql.ExpressionFormatter;
 import io.crate.sql.parser.SqlParser;
@@ -985,7 +986,7 @@ public class ExpressionAnalyzer {
         public Symbol visitMatchPredicate(MatchPredicate node, ExpressionAnalysisContext context) {
             Map<Symbol, Symbol> identBoostMap = new HashMap<>(node.idents().size());
             DataType<?> columnType = null;
-            HashSet<QualifiedName> relationsInColumns = new HashSet<>();
+            HashSet<RelationName> relationsInColumns = new HashSet<>();
             for (MatchPredicateColumnIdent ident : node.idents()) {
                 Symbol column = ident.columnIdent().accept(this, context);
                 if (columnType == null) {

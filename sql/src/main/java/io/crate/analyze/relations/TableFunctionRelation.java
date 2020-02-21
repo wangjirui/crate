@@ -33,7 +33,6 @@ import io.crate.metadata.RelationName;
 import io.crate.metadata.RowGranularity;
 import io.crate.metadata.table.Operation;
 import io.crate.metadata.tablefunctions.TableFunctionImplementation;
-import io.crate.sql.tree.QualifiedName;
 import io.crate.types.DataType;
 import io.crate.types.RowType;
 
@@ -41,27 +40,23 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.Consumer;
 
 public class TableFunctionRelation implements AnalyzedRelation, FieldResolver {
 
     private final TableFunctionImplementation<?> functionImplementation;
     private final Function function;
-    private final QualifiedName qualifiedName;
     private final List<Reference> outputs;
+    private final RelationName relationName;
 
-    public TableFunctionRelation(TableFunctionImplementation<?> functionImplementation,
-                                 Function function,
-                                 QualifiedName qualifiedName) {
+    public TableFunctionRelation(TableFunctionImplementation<?> functionImplementation, Function function) {
         this.functionImplementation = functionImplementation;
         this.function = function;
-        this.qualifiedName = qualifiedName;
         RowType rowType = functionImplementation.returnType();
         this.outputs = new ArrayList<>(rowType.numElements());
         int idx = 0;
         FunctionName functionName = function.info().ident().fqnName();
-        var relationName = new RelationName(Objects.requireNonNullElse(functionName.schema(), ""), functionName.name());
+        this.relationName = new RelationName(null, functionName.name());
         for (int i = 0; i < rowType.numElements(); i++) {
             DataType<?> type = rowType.getFieldType(i);
             String fieldName = rowType.getFieldName(i);
@@ -85,8 +80,8 @@ public class TableFunctionRelation implements AnalyzedRelation, FieldResolver {
     }
 
     @Override
-    public QualifiedName getQualifiedName() {
-        return qualifiedName;
+    public RelationName relationName() {
+        return relationName;
     }
 
     @Nonnull

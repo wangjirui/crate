@@ -149,7 +149,7 @@ public class RelationAnalyzer extends DefaultTraversalVisitor<AnalyzedRelation, 
         // Use child relation to process expressions of the "root" Query node
         statementContext.startRelation();
         RelationAnalysisContext relationAnalysisContext = statementContext.currentRelationContext();
-        relationAnalysisContext.addSourceRelation(childRelation.getQualifiedName().toString(), childRelation);
+        relationAnalysisContext.addSourceRelation(childRelation);
         statementContext.endRelation();
 
         List<Symbol> childRelationFields = childRelation.outputs();
@@ -264,8 +264,8 @@ public class RelationAnalyzer extends DefaultTraversalVisitor<AnalyzedRelation, 
                     expr = ((JoinOn) joinCriteria).getExpression();
                 } else {
                     expr = JoinUsing.toExpression(
-                        leftRel.getQualifiedName(),
-                        rightRel.getQualifiedName(),
+                        leftRel.relationName().toQualifiedName(),
+                        rightRel.relationName().toQualifiedName(),
                         ((JoinUsing) joinCriteria).getColumns());
                 }
                 try {
@@ -295,8 +295,8 @@ public class RelationAnalyzer extends DefaultTraversalVisitor<AnalyzedRelation, 
             RelationAnalysisContext innerContext = statementContext.startRelation();
             relation.accept(this, statementContext);
             statementContext.endRelation();
-            for (Map.Entry<QualifiedName, AnalyzedRelation> entry : innerContext.sources().entrySet()) {
-                currentRelationContext.addSourceRelation(entry.getKey(), entry.getValue());
+            for (Map.Entry<RelationName, AnalyzedRelation> entry : innerContext.sources().entrySet()) {
+                currentRelationContext.addSourceRelation(entry.getValue());
             }
             for (JoinPair joinPair : innerContext.joinPairs()) {
                 currentRelationContext.addJoinPair(joinPair);
@@ -549,11 +549,13 @@ public class RelationAnalyzer extends DefaultTraversalVisitor<AnalyzedRelation, 
     protected AnalyzedRelation visitAliasedRelation(AliasedRelation node, StatementAnalysisContext context) {
         context.startRelation(true);
         AnalyzedRelation childRelation = node.getRelation().accept(this, context);
-        AnalyzedRelation aliasedRelation = new AliasedAnalyzedRelation(childRelation,
-                                                                       new QualifiedName(node.getAlias()),
-                                                                       node.getColumnNames());
+        AnalyzedRelation aliasedRelation = new AliasedAnalyzedRelation(
+            childRelation,
+            new RelationName(null, node.getAlias()),
+            node.getColumnNames()
+        );
         context.endRelation();
-        context.currentRelationContext().addSourceRelation(node.getAlias(), aliasedRelation);
+        context.currentRelationContext().addSourceRelation(aliasedRelation);
         return aliasedRelation;
     }
 
@@ -561,7 +563,6 @@ public class RelationAnalyzer extends DefaultTraversalVisitor<AnalyzedRelation, 
     protected AnalyzedRelation visitTable(Table<?> node, StatementAnalysisContext context) {
         QualifiedName tableQualifiedName = node.getName();
         SearchPath searchPath = context.sessionContext().searchPath();
-        RelationName relationName;
         AnalyzedRelation relation;
         TableInfo tableInfo;
         try {
@@ -574,10 +575,8 @@ public class RelationAnalyzer extends DefaultTraversalVisitor<AnalyzedRelation, 
             if (tableInfo instanceof DocTableInfo) {
                 // Dispatching of doc relations is based on the returned class of the schema information.
                 relation = new DocTableRelation((DocTableInfo) tableInfo);
-                relationName = tableInfo.ident();
             } else {
                 relation = new TableRelation(tableInfo);
-                relationName = tableInfo.ident();
             }
         } catch (RelationUnknown e) {
             Tuple<ViewMetaData, RelationName> viewMetaData;
@@ -588,12 +587,11 @@ public class RelationAnalyzer extends DefaultTraversalVisitor<AnalyzedRelation, 
                 throw e;
             }
             ViewMetaData view = viewMetaData.v1();
-            relationName = viewMetaData.v2();
             AnalyzedRelation resolvedView = SqlParser.createStatement(view.stmt()).accept(this, context);
-            relation = new AnalyzedView(relationName, view.owner(), resolvedView);
+            relation = new AnalyzedView(viewMetaData.v2(), view.owner(), resolvedView);
         }
 
-        context.currentRelationContext().addSourceRelation(relationName.schema(), relationName.name(), relation);
+        context.currentRelationContext().addSourceRelation(relation);
         return relation;
     }
 
@@ -627,9 +625,8 @@ public class RelationAnalyzer extends DefaultTraversalVisitor<AnalyzedRelation, 
 
         FunctionImplementation functionImplementation = functions.getQualified(ident);
         TableFunctionImplementation<?> tableFunction = TableFunctionFactory.from(functionImplementation);
-        QualifiedName qualifiedName = new QualifiedName(node.name());
-        TableFunctionRelation tableRelation = new TableFunctionRelation(tableFunction, function, qualifiedName);
-        context.addSourceRelation(qualifiedName, tableRelation);
+        TableFunctionRelation tableRelation = new TableFunctionRelation(tableFunction, function);
+        context.addSourceRelation(tableRelation);
         return tableRelation;
     }
 
@@ -715,14 +712,9 @@ public class RelationAnalyzer extends DefaultTraversalVisitor<AnalyzedRelation, 
         FunctionImplementation implementation = functions.getQualified(functionIdent);
         Function function = new Function(implementation.info(), arrays);
         TableFunctionImplementation<?> tableFunc = TableFunctionFactory.from(implementation);
-        QualifiedName qualifiedName = new QualifiedName(ValuesFunction.NAME);
-        TableFunctionRelation relation = new TableFunctionRelation(
-            tableFunc,
-            function,
-            qualifiedName
-        );
+        TableFunctionRelation relation = new TableFunctionRelation(tableFunc, function);
         context.startRelation();
-        context.currentRelationContext().addSourceRelation(qualifiedName, relation);
+        context.currentRelationContext().addSourceRelation(relation);
         context.endRelation();
         return relation;
     }

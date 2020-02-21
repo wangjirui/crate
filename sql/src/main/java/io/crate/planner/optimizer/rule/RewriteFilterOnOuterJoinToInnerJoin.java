@@ -30,8 +30,8 @@ import io.crate.expression.symbol.FieldReplacer;
 import io.crate.expression.symbol.Literal;
 import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.Functions;
+import io.crate.metadata.RelationName;
 import io.crate.metadata.TransactionContext;
-import io.crate.statistics.TableStats;
 import io.crate.planner.node.dql.join.JoinType;
 import io.crate.planner.operators.Filter;
 import io.crate.planner.operators.LogicalPlan;
@@ -40,7 +40,7 @@ import io.crate.planner.optimizer.Rule;
 import io.crate.planner.optimizer.matcher.Capture;
 import io.crate.planner.optimizer.matcher.Captures;
 import io.crate.planner.optimizer.matcher.Pattern;
-import io.crate.sql.tree.QualifiedName;
+import io.crate.statistics.TableStats;
 
 import javax.annotation.Nullable;
 import java.util.Map;
@@ -125,14 +125,14 @@ public final class RewriteFilterOnOuterJoinToInnerJoin implements Rule<Filter> {
                              TransactionContext txnCtx) {
         NestedLoopJoin nl = captures.get(nlCapture);
         Symbol query = filter.query();
-        Map<Set<QualifiedName>, Symbol> splitQueries = QuerySplitter.split(query);
+        Map<Set<RelationName>, Symbol> splitQueries = QuerySplitter.split(query);
         if (splitQueries.size() == 1 && splitQueries.keySet().iterator().next().size() > 1) {
             return null;
         }
         LogicalPlan lhs = nl.sources().get(0);
         LogicalPlan rhs = nl.sources().get(1);
-        Set<QualifiedName> leftName = lhs.getRelationNames();
-        Set<QualifiedName> rightName = rhs.getRelationNames();
+        Set<RelationName> leftName = lhs.getRelationNames();
+        Set<RelationName> rightName = rhs.getRelationNames();
 
         Symbol leftQuery = splitQueries.remove(leftName);
         Symbol rightQuery = splitQueries.remove(rightName);

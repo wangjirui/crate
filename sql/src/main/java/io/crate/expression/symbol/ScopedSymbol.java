@@ -22,7 +22,7 @@
 package io.crate.expression.symbol;
 
 import io.crate.metadata.ColumnIdent;
-import io.crate.sql.tree.QualifiedName;
+import io.crate.metadata.RelationName;
 import io.crate.types.DataType;
 import org.elasticsearch.common.io.stream.StreamOutput;
 
@@ -33,17 +33,17 @@ import java.io.IOException;
  */
 public final class ScopedSymbol extends Symbol {
 
-    private final QualifiedName relation;
+    private final RelationName relation;
     private final ColumnIdent column;
     private final DataType<?> dataType;
 
-    public ScopedSymbol(QualifiedName relation, ColumnIdent column, DataType<?> dataType) {
+    public ScopedSymbol(RelationName relation, ColumnIdent column, DataType<?> dataType) {
         this.relation = relation;
         this.column = column;
         this.dataType = dataType;
     }
 
-    public QualifiedName relation() {
+    public RelationName relation() {
         return relation;
     }
 

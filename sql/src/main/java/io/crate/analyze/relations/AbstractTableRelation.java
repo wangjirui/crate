@@ -25,27 +25,20 @@ import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.Reference;
+import io.crate.metadata.RelationName;
 import io.crate.metadata.table.TableInfo;
-import io.crate.sql.tree.QualifiedName;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.Arrays;
 import java.util.List;
 
 public abstract class AbstractTableRelation<T extends TableInfo> implements AnalyzedRelation, FieldResolver {
 
     protected final T tableInfo;
     private final List<Symbol> outputs;
-    private final QualifiedName qualifiedName;
 
     public AbstractTableRelation(T tableInfo) {
-        this(tableInfo, new QualifiedName(Arrays.asList(tableInfo.ident().schema(), tableInfo.ident().name())));
-    }
-
-    public AbstractTableRelation(T tableInfo, QualifiedName qualifiedName) {
         this.tableInfo = tableInfo;
-        this.qualifiedName = qualifiedName;
         this.outputs = List.copyOf(tableInfo.columns());
     }
 
@@ -65,13 +58,13 @@ public abstract class AbstractTableRelation<T extends TableInfo> implements Anal
     }
 
     @Override
-    public QualifiedName getQualifiedName() {
-        return qualifiedName;
+    public RelationName relationName() {
+        return tableInfo.ident();
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + '{' + this.qualifiedName + '}';
+        return getClass().getSimpleName() + '{' + this.tableInfo.ident() + '}';
     }
 
     @Override
@@ -81,23 +74,18 @@ public abstract class AbstractTableRelation<T extends TableInfo> implements Anal
 
         AbstractTableRelation<?> that = (AbstractTableRelation<?>) o;
 
-        if (!tableInfo.equals(that.tableInfo)) return false;
-        if (!qualifiedName.equals(that.qualifiedName)) return false;
-
-        return true;
+        return tableInfo.equals(that.tableInfo);
     }
 
     @Override
     public int hashCode() {
-        int result = tableInfo.hashCode();
-        result = 31 * result + qualifiedName.hashCode();
-        return result;
+        return tableInfo.hashCode();
     }
 
     @Override
     @Nullable
     public Reference resolveField(ScopedSymbol field) {
-        if (field.relation().equals(qualifiedName)) {
+        if (field.relation().equals(tableInfo.ident())) {
             return getField(field.column());
         }
         return null;

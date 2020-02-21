@@ -690,18 +690,15 @@ public class SQLExecutor {
      * If tables are used here they must also be registered in the SQLExecutor having used {@link Builder#addTable(String)}
      */
     public Symbol asSymbol(String expression) {
-        ImmutableMap.Builder<QualifiedName, AnalyzedRelation> sources = ImmutableMap.builder();
+        ImmutableMap.Builder<RelationName, AnalyzedRelation> sources = ImmutableMap.builder();
         for (SchemaInfo schemaInfo : schemas) {
             for (TableInfo tableInfo : schemaInfo.getTables()) {
                 if (tableInfo instanceof DocTableInfo) {
                     RelationName relationName = tableInfo.ident();
-                    sources.put(
-                        new QualifiedName(Arrays.asList(relationName.schema(), relationName.name())),
-                        new DocTableRelation(schemas.getTableInfo(relationName)));
+                    sources.put(relationName, new DocTableRelation(schemas.getTableInfo(relationName)));
                 }
             }
         }
-
         CoordinatorTxnCtx coordinatorTxnCtx = new CoordinatorTxnCtx(sessionContext);
         ExpressionAnalyzer expressionAnalyzer = new ExpressionAnalyzer(
             functions,

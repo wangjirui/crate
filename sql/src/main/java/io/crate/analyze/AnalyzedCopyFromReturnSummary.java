@@ -27,20 +27,18 @@ import io.crate.analyze.relations.AnalyzedRelationVisitor;
 import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.ColumnIdent;
+import io.crate.metadata.RelationName;
 import io.crate.metadata.doc.DocTableInfo;
 import io.crate.sql.tree.GenericProperties;
-import io.crate.sql.tree.QualifiedName;
 import io.crate.sql.tree.Table;
 import io.crate.types.DataTypes;
 import io.crate.types.ObjectType;
 
 import javax.annotation.Nonnull;
-import java.util.Arrays;
 import java.util.List;
 
 public class AnalyzedCopyFromReturnSummary extends AnalyzedCopyFrom implements AnalyzedRelation {
 
-    private final QualifiedName qualifiedName;
     private final List<ScopedSymbol> fields;
 
     AnalyzedCopyFromReturnSummary(DocTableInfo tableInfo,
@@ -48,16 +46,15 @@ public class AnalyzedCopyFromReturnSummary extends AnalyzedCopyFrom implements A
                                   GenericProperties<Symbol> properties,
                                   Symbol uri) {
         super(tableInfo, table, properties, uri);
-        qualifiedName = new QualifiedName(Arrays.asList(tableInfo.ident().schema(), tableInfo.ident().name()));
         this.fields = List.of(
-            new ScopedSymbol(qualifiedName, new ColumnIdent("node"), ObjectType.builder()
+            new ScopedSymbol(tableInfo.ident(), new ColumnIdent("node"), ObjectType.builder()
                 .setInnerType("id", DataTypes.STRING)
                 .setInnerType("name", DataTypes.STRING)
                 .build()),
-            new ScopedSymbol(qualifiedName, new ColumnIdent("uri"), DataTypes.STRING),
-            new ScopedSymbol(qualifiedName, new ColumnIdent("success_count"), DataTypes.LONG),
-            new ScopedSymbol(qualifiedName, new ColumnIdent("error_count"), DataTypes.LONG),
-            new ScopedSymbol(qualifiedName, new ColumnIdent("errors"), ObjectType.untyped())
+            new ScopedSymbol(tableInfo.ident(), new ColumnIdent("uri"), DataTypes.STRING),
+            new ScopedSymbol(tableInfo.ident(), new ColumnIdent("success_count"), DataTypes.LONG),
+            new ScopedSymbol(tableInfo.ident(), new ColumnIdent("error_count"), DataTypes.LONG),
+            new ScopedSymbol(tableInfo.ident(), new ColumnIdent("errors"), ObjectType.untyped())
         );
     }
 
@@ -68,8 +65,8 @@ public class AnalyzedCopyFromReturnSummary extends AnalyzedCopyFrom implements A
     }
 
     @Override
-    public QualifiedName getQualifiedName() {
-        return qualifiedName;
+    public RelationName relationName() {
+        return tableInfo().ident();
     }
 
     @Nonnull

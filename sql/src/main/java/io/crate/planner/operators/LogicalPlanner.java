@@ -308,7 +308,7 @@ public class LogicalPlanner {
                 context.whereClause.map(remapScopedSymbols)
             );
             var source = child.accept(this, newCtx);
-            return new Rename(context.toCollect, relation.getQualifiedName(), source);
+            return new Rename(context.toCollect, relation.relationName(), source);
         }
 
         @Override
@@ -322,7 +322,7 @@ public class LogicalPlanner {
                 context.whereClause.map(remapScopedSymbols)
             );
             var source = child.accept(this, newCtx);
-            return new Rename(context.toCollect, view.getQualifiedName(), source);
+            return new Rename(context.toCollect, view.relationName(), source);
         }
 
         @Override

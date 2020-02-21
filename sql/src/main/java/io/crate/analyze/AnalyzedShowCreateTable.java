@@ -26,8 +26,8 @@ import io.crate.analyze.relations.AnalyzedRelationVisitor;
 import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.ColumnIdent;
+import io.crate.metadata.RelationName;
 import io.crate.metadata.doc.DocTableInfo;
-import io.crate.sql.tree.QualifiedName;
 import io.crate.types.DataTypes;
 
 import javax.annotation.Nonnull;
@@ -38,11 +38,11 @@ public class AnalyzedShowCreateTable implements AnalyzedStatement, AnalyzedRelat
 
     private final DocTableInfo tableInfo;
     private final List<ScopedSymbol> fields;
-    private final QualifiedName relationName;
+    private final RelationName relationName;
 
     public AnalyzedShowCreateTable(DocTableInfo tableInfo) {
         String columnName = "SHOW CREATE TABLE " + tableInfo.ident().fqn();
-        relationName = new QualifiedName("SHOW CREATE TABLE");
+        relationName = new RelationName(null, "SHOW CREATE TABLE");
         this.fields = Collections.singletonList(new ScopedSymbol(relationName, new ColumnIdent(columnName), DataTypes.STRING));
         this.tableInfo = tableInfo;
     }
@@ -67,7 +67,7 @@ public class AnalyzedShowCreateTable implements AnalyzedStatement, AnalyzedRelat
     }
 
     @Override
-    public QualifiedName getQualifiedName() {
+    public RelationName relationName() {
         return relationName;
     }
 

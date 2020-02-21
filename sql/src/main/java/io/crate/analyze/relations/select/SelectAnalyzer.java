@@ -30,6 +30,7 @@ import io.crate.expression.symbol.AliasSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.Symbols;
 import io.crate.metadata.ColumnIdent;
+import io.crate.metadata.RelationName;
 import io.crate.sql.tree.AllColumns;
 import io.crate.sql.tree.DefaultTraversalVisitor;
 import io.crate.sql.tree.QualifiedName;
@@ -45,7 +46,7 @@ public class SelectAnalyzer {
     public static final InnerVisitor INSTANCE = new InnerVisitor();
 
     public static SelectAnalysis analyzeSelectItems(List<SelectItem> selectItems,
-                                                    Map<QualifiedName, AnalyzedRelation> sources,
+                                                    Map<RelationName, AnalyzedRelation> sources,
                                                     ExpressionAnalyzer expressionAnalyzer,
                                                     ExpressionAnalysisContext expressionAnalysisContext) {
         SelectAnalysis selectAnalysis = new SelectAnalysis(
@@ -86,10 +87,10 @@ public class SelectAnalyzer {
                     // e.g.  select mytable.* from foo.mytable; prefix is mytable, source is [foo, mytable]
                     // if prefix matches second part of qualified name this is okay
                     String prefixName = prefix.getParts().get(0);
-                    for (Map.Entry<QualifiedName, AnalyzedRelation> entry : context.sources().entrySet()) {
-                        List<String> parts = entry.getKey().getParts();
+                    for (Map.Entry<RelationName, AnalyzedRelation> entry : context.sources().entrySet()) {
+                        RelationName relationName = entry.getKey();
                         // schema.table
-                        if (parts.size() == 2 && prefixName.equals(parts.get(1))) {
+                        if (relationName.schema() != null && prefixName.equals(relationName.name())) {
                             addAllFieldsFromRelation(context, entry.getValue());
                             matches++;
                         }

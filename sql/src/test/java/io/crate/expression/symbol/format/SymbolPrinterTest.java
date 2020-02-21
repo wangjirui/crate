@@ -22,16 +22,13 @@
 
 package io.crate.expression.symbol.format;
 
-import com.google.common.collect.ImmutableMap;
-import io.crate.analyze.relations.AbstractTableRelation;
 import io.crate.analyze.relations.AnalyzedRelation;
 import io.crate.analyze.relations.TableRelation;
 import io.crate.expression.symbol.Aggregation;
 import io.crate.expression.symbol.DynamicReference;
-import io.crate.expression.symbol.FetchReference;
-import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.InputColumn;
 import io.crate.expression.symbol.Literal;
+import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.FunctionIdent;
@@ -42,7 +39,6 @@ import io.crate.metadata.RelationName;
 import io.crate.metadata.RowGranularity;
 import io.crate.metadata.doc.DocSchemaInfo;
 import io.crate.metadata.doc.DocTableInfo;
-import io.crate.sql.tree.QualifiedName;
 import io.crate.test.integration.CrateDummyClusterServiceUnitTest;
 import io.crate.testing.SQLExecutor;
 import io.crate.testing.SqlExpressions;
@@ -76,14 +72,12 @@ public class SymbolPrinterTest extends CrateDummyClusterServiceUnitTest {
             "  idx int," +
             "  s_arr array(text)" +
             ")";
+        RelationName name = new RelationName(DocSchemaInfo.NAME, TABLE_NAME);
         DocTableInfo tableInfo = SQLExecutor.tableInfo(
-            new RelationName(DocSchemaInfo.NAME, TABLE_NAME),
+            name,
             createTableStmt,
             clusterService);
-
-        Map<QualifiedName, AnalyzedRelation> sources = ImmutableMap.<QualifiedName, AnalyzedRelation>builder()
-            .put(QualifiedName.of(TABLE_NAME), new TableRelation(tableInfo))
-            .build();
+        Map<RelationName, AnalyzedRelation> sources = Map.of(name, new TableRelation(tableInfo));
         sqlExpressions = new SqlExpressions(sources);
     }
 

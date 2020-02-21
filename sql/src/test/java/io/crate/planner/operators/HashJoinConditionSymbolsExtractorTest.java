@@ -25,7 +25,7 @@ package io.crate.planner.operators;
 import io.crate.analyze.relations.AnalyzedRelation;
 import io.crate.expression.scalar.arithmetic.ArithmeticFunctions;
 import io.crate.expression.symbol.Symbol;
-import io.crate.sql.tree.QualifiedName;
+import io.crate.metadata.RelationName;
 import io.crate.test.integration.CrateDummyClusterServiceUnitTest;
 import io.crate.testing.SqlExpressions;
 import io.crate.testing.T3;
@@ -49,46 +49,46 @@ public class HashJoinConditionSymbolsExtractorTest extends CrateDummyClusterServ
 
     @Before
     public void prepare() throws Exception {
-        Map<QualifiedName, AnalyzedRelation> sources = T3.sources(clusterService);
+        Map<RelationName, AnalyzedRelation> sources = T3.sources(clusterService);
         sqlExpressions = new SqlExpressions(sources);
-        tr1 = T3.fromSource(T3.T1_RN, sources);
-        tr2 = T3.fromSource(T3.T2_RN, sources);
+        tr1 = sources.get(T3.T1);
+        tr2 = sources.get(T3.T2);
     }
 
     @Test
     public void testExtractFromTopEqCondition() {
         Symbol joinCondition = sqlExpressions.asSymbol("t1.x = t2.y");
-        Map<QualifiedName, List<Symbol>> symbolsPerRelation = HashJoinConditionSymbolsExtractor.extract(joinCondition);
-        assertThat(symbolsPerRelation.get(tr1.getQualifiedName()), contains(isField("x")));
-        assertThat(symbolsPerRelation.get(tr2.getQualifiedName()), contains(isField("y")));
+        Map<RelationName, List<Symbol>> symbolsPerRelation = HashJoinConditionSymbolsExtractor.extract(joinCondition);
+        assertThat(symbolsPerRelation.get(tr1.relationName()), contains(isField("x")));
+        assertThat(symbolsPerRelation.get(tr2.relationName()), contains(isField("y")));
     }
 
     @Test
     public void testExtractFromNestedEqCondition() {
         Symbol joinCondition = sqlExpressions.asSymbol("t1.x > t2.y and t1.a = t2.b and not(t1.i = t2.i)");
-        Map<QualifiedName, List<Symbol>> symbolsPerRelation = HashJoinConditionSymbolsExtractor.extract(joinCondition);
-        assertThat(symbolsPerRelation.get(tr1.getQualifiedName()), contains(isField("a")));
-        assertThat(symbolsPerRelation.get(tr2.getQualifiedName()), contains(isField("b")));
+        Map<RelationName, List<Symbol>> symbolsPerRelation = HashJoinConditionSymbolsExtractor.extract(joinCondition);
+        assertThat(symbolsPerRelation.get(tr1.relationName()), contains(isField("a")));
+        assertThat(symbolsPerRelation.get(tr2.relationName()), contains(isField("b")));
     }
 
     @Test
     public void testExtractSymbolsWithDuplicates() {
         Symbol joinCondition = sqlExpressions.asSymbol("t1.a = t2.b and t1.i + 1 = t2.i and t2.y = t1.i + 1");
-        Map<QualifiedName, List<Symbol>> symbolsPerRelation = HashJoinConditionSymbolsExtractor.extract(joinCondition);
-        assertThat(symbolsPerRelation.get(tr1.getQualifiedName()), containsInAnyOrder(
+        Map<RelationName, List<Symbol>> symbolsPerRelation = HashJoinConditionSymbolsExtractor.extract(joinCondition);
+        assertThat(symbolsPerRelation.get(tr1.relationName()), containsInAnyOrder(
             isField("a"),
             isFunction(ArithmeticFunctions.Names.ADD, isField("i"), isLiteral(1))));
-        assertThat(symbolsPerRelation.get(tr2.getQualifiedName()), containsInAnyOrder(isField("b"), isField("i")));
+        assertThat(symbolsPerRelation.get(tr2.relationName()), containsInAnyOrder(isField("b"), isField("i")));
     }
 
     @Test
     public void testExtractRelationsOfFunctionsWithLiterals() {
         Symbol joinCondition = sqlExpressions.asSymbol("t1.a = t2.b and t1.i + 1 = t2.i and t2.y = 1 + t1.i");
-        Map<QualifiedName, List<Symbol>> symbolsPerRelation = HashJoinConditionSymbolsExtractor.extract(joinCondition);
-        assertThat(symbolsPerRelation.get(tr1.getQualifiedName()), containsInAnyOrder(
+        Map<RelationName, List<Symbol>> symbolsPerRelation = HashJoinConditionSymbolsExtractor.extract(joinCondition);
+        assertThat(symbolsPerRelation.get(tr1.relationName()), containsInAnyOrder(
             isField("a"),
             isFunction(ArithmeticFunctions.Names.ADD, isField("i"), isLiteral(1)),
             isFunction(ArithmeticFunctions.Names.ADD, isLiteral(1), isField("i"))));
-        assertThat(symbolsPerRelation.get(tr2.getQualifiedName()), containsInAnyOrder(isField("b"), isField("i"), isField("y")));
+        assertThat(symbolsPerRelation.get(tr2.relationName()), containsInAnyOrder(isField("b"), isField("i"), isField("y")));
     }
 }

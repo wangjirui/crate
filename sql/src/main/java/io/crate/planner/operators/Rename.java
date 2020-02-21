@@ -27,9 +27,9 @@ import io.crate.common.collections.Lists2;
 import io.crate.data.Row;
 import io.crate.execution.dsl.projection.builder.ProjectionBuilder;
 import io.crate.expression.symbol.Symbol;
+import io.crate.metadata.RelationName;
 import io.crate.planner.ExecutionPlan;
 import io.crate.planner.PlannerContext;
-import io.crate.sql.tree.QualifiedName;
 
 import javax.annotation.Nullable;
 import java.util.List;
@@ -40,9 +40,9 @@ import java.util.List;
 public final class Rename extends ForwardingLogicalPlan {
 
     private final List<Symbol> outputs;
-    final QualifiedName name;
+    final RelationName name;
 
-    public Rename(List<Symbol> outputs, QualifiedName name, LogicalPlan source) {
+    public Rename(List<Symbol> outputs, RelationName name, LogicalPlan source) {
         super(source);
         this.name = name;
         this.outputs = outputs;

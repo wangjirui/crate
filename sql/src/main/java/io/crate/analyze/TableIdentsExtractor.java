@@ -117,7 +117,7 @@ public class TableIdentsExtractor {
 
         @Override
         public Collection<RelationName> visitField(ScopedSymbol field, Void context) {
-            return List.of(RelationName.of(field.relation(), null));
+            return List.of(field.relation());
         }
 
         @Override

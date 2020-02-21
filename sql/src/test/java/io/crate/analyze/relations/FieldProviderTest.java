@@ -26,6 +26,7 @@ import io.crate.exceptions.AmbiguousColumnException;
 import io.crate.exceptions.ColumnUnknownException;
 import io.crate.exceptions.RelationUnknown;
 import io.crate.expression.symbol.Symbol;
+import io.crate.metadata.RelationName;
 import io.crate.metadata.Schemas;
 import io.crate.metadata.table.Operation;
 import io.crate.sql.tree.QualifiedName;
@@ -35,28 +36,36 @@ import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class FieldProviderTest extends CrateUnitTest {
 
     private AnalyzedRelation dummyRelation = new DummyRelation("name");
 
-    private Map<QualifiedName, AnalyzedRelation> dummySources = ImmutableMap.of(
-        newQN("dummy.t"), dummyRelation);
+    private Map<QualifiedName, AnalyzedRelation> dummySources = Map.of(new QualifiedName("dummy"), dummyRelation);
 
     private static QualifiedName newQN(String dottedName) {
         return new QualifiedName(Arrays.asList(dottedName.split("\\.")));
     }
 
     private static FullQualifiedNameFieldProvider newFQFieldProvider(Map<QualifiedName, AnalyzedRelation> sources) {
-        return new FullQualifiedNameFieldProvider(sources, ParentRelations.NO_PARENTS, Schemas.DOC_SCHEMA_NAME);
+        Map<RelationName, AnalyzedRelation> relations = sources.entrySet().stream()
+            .collect(Collectors.toMap(
+                entry -> RelationName.of(entry.getKey(), "doc"),
+                Map.Entry::getValue
+            ));
+        return new FullQualifiedNameFieldProvider(
+            relations,
+            ParentRelations.NO_PARENTS,
+            Schemas.DOC_SCHEMA_NAME
+        );
     }
 
     @Test
     public void testInvalidSources() throws Exception {
         expectedException.expect(UnsupportedOperationException.class);
         AnalyzedRelation relation = new DummyRelation("name");
-        FieldProvider<Symbol> resolver = newFQFieldProvider(
-            ImmutableMap.of(newQN("too.many.parts"), relation));
+        FieldProvider<Symbol> resolver = newFQFieldProvider(Map.of(newQN("too.many.parts"), relation));
         resolver.resolveField(newQN("name"), null, Operation.READ);
     }
 
@@ -108,7 +117,7 @@ public class FieldProviderTest extends CrateUnitTest {
         AnalyzedRelation fooA = new DummyRelation("name");
         AnalyzedRelation customT = new DummyRelation("tags");
 
-        FieldProvider<Symbol> resolver = newFQFieldProvider(ImmutableMap.of(
+        FieldProvider<Symbol> resolver = newFQFieldProvider(Map.of(
             newQN("bar.t"), barT,
             newQN("foo.t"), fooT,
             newQN("foo.a"), fooA,

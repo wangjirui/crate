@@ -28,7 +28,7 @@ import io.crate.analyze.relations.JoinPair;
 import io.crate.common.collections.Lists2;
 import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.Symbols;
-import io.crate.sql.tree.QualifiedName;
+import io.crate.metadata.RelationName;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -67,7 +67,7 @@ public class QueriedSelectRelation implements AnalyzedRelation {
     }
 
     @Override
-    public QualifiedName getQualifiedName() {
+    public RelationName relationName() {
         throw new UnsupportedOperationException(
             "QueriedSelectRelation has no name. It must be beneath an aliased-relation to be addressable by name");
     }
@@ -111,7 +111,7 @@ public class QueriedSelectRelation implements AnalyzedRelation {
         return "SELECT "
                + Lists2.joinOn(", ", outputs(), x -> Symbols.pathFromSymbol(x).sqlFqn())
                + " FROM ("
-               + Lists2.joinOn(", ", from, x -> x.getQualifiedName().toString())
+               + Lists2.joinOn(", ", from, x -> x.relationName().toString())
                + ')';
     }
 

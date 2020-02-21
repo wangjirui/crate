@@ -26,6 +26,7 @@ import io.crate.analyze.OrderBy;
 import io.crate.expression.symbol.FieldsVisitor;
 import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
+import io.crate.metadata.RelationName;
 import io.crate.metadata.TransactionContext;
 import io.crate.planner.operators.LogicalPlan;
 import io.crate.planner.operators.NestedLoopJoin;
@@ -34,7 +35,6 @@ import io.crate.planner.optimizer.Rule;
 import io.crate.planner.optimizer.matcher.Capture;
 import io.crate.planner.optimizer.matcher.Captures;
 import io.crate.planner.optimizer.matcher.Pattern;
-import io.crate.sql.tree.QualifiedName;
 import io.crate.statistics.TableStats;
 
 import java.util.Collections;
@@ -80,7 +80,7 @@ public final class MoveOrderBeneathNestedLoop implements Rule<Order> {
                              TableStats tableStats,
                              TransactionContext txnCtx) {
         NestedLoopJoin nestedLoop = captures.get(nlCapture);
-        Set<QualifiedName> relationsInOrderBy =
+        Set<RelationName> relationsInOrderBy =
             Collections.newSetFromMap(new IdentityHashMap<>());
         Consumer<ScopedSymbol> gatherRelations = f -> relationsInOrderBy.add(f.relation());
         OrderBy orderBy = order.orderBy();
@@ -88,8 +88,8 @@ public final class MoveOrderBeneathNestedLoop implements Rule<Order> {
             FieldsVisitor.visitFields(orderExpr, gatherRelations);
         }
         if (relationsInOrderBy.size() == 1) {
-            QualifiedName relationInOrderBy = relationsInOrderBy.iterator().next();
-            if (relationInOrderBy == nestedLoop.topMostLeftRelation().getQualifiedName()) {
+            RelationName relationInOrderBy = relationsInOrderBy.iterator().next();
+            if (relationInOrderBy == nestedLoop.topMostLeftRelation().relationName()) {
                 LogicalPlan lhs = nestedLoop.sources().get(0);
                 LogicalPlan newLhs = order.replaceSources(List.of(lhs));
                 return new NestedLoopJoin(

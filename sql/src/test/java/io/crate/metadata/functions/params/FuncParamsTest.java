@@ -27,7 +27,7 @@ import io.crate.expression.symbol.FuncArg;
 import io.crate.expression.symbol.Literal;
 import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.metadata.ColumnIdent;
-import io.crate.sql.tree.QualifiedName;
+import io.crate.metadata.RelationName;
 import io.crate.test.integration.CrateUnitTest;
 import io.crate.types.ArrayType;
 import io.crate.types.DataType;
@@ -141,7 +141,7 @@ public class FuncParamsTest extends CrateUnitTest {
     @Test
     public void testFieldsAreNotCastable() {
         ColumnIdent path = new ColumnIdent("test");
-        ScopedSymbol field = new ScopedSymbol(new QualifiedName("dummy"), path, DataTypes.INTEGER);
+        ScopedSymbol field = new ScopedSymbol(new RelationName("doc", "dummy"), path, DataTypes.INTEGER);
         FuncParams params = FuncParams.builder(Param.LONG).build();
         expectedException.expect(ConversionException.class);
         expectedException.expectMessage("Cannot cast `test` of type `integer` to type `bigint`");

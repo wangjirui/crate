@@ -26,7 +26,6 @@ import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.Symbols;
 import io.crate.metadata.RelationName;
-import io.crate.sql.tree.QualifiedName;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -41,7 +40,6 @@ import java.util.List;
  **/
 public final class AnalyzedView implements AnalyzedRelation, FieldResolver {
 
-    private final QualifiedName qualifiedName;
     private final RelationName name;
     private final String owner;
     private final AnalyzedRelation relation;
@@ -49,7 +47,6 @@ public final class AnalyzedView implements AnalyzedRelation, FieldResolver {
 
     public AnalyzedView(RelationName name, String owner, AnalyzedRelation relation) {
         this.name = name;
-        this.qualifiedName = QualifiedName.of(name.schema(), name.name());
         this.owner = owner;
         this.relation = relation;
         var childOutputs = relation.outputs();
@@ -57,7 +54,7 @@ public final class AnalyzedView implements AnalyzedRelation, FieldResolver {
         for (int i = 0; i < childOutputs.size(); i++) {
             var output = childOutputs.get(i);
             var column = Symbols.pathFromSymbol(output);
-            outputs.add(new ScopedSymbol(qualifiedName, column, output.valueType()));
+            outputs.add(new ScopedSymbol(name, column, output.valueType()));
         }
         this.outputSymbols = List.copyOf(outputs);
     }
@@ -80,8 +77,8 @@ public final class AnalyzedView implements AnalyzedRelation, FieldResolver {
     }
 
     @Override
-    public QualifiedName getQualifiedName() {
-        return qualifiedName;
+    public RelationName relationName() {
+        return name;
     }
 
     @Nonnull
@@ -92,7 +89,7 @@ public final class AnalyzedView implements AnalyzedRelation, FieldResolver {
 
     @Override
     public String toString() {
-        return "AnalyzedView{" + "qualifiedName=" + qualifiedName +
+        return "AnalyzedView{" + "qualifiedName=" + name +
                ", relation=" + relation +
                '}';
     }
@@ -102,7 +99,7 @@ public final class AnalyzedView implements AnalyzedRelation, FieldResolver {
     public Symbol resolveField(ScopedSymbol field) {
         var idx = outputSymbols.indexOf(field);
         if (idx < 0) {
-            throw new IllegalArgumentException(field + " does not belong to " + getQualifiedName());
+            throw new IllegalArgumentException(field + " does not belong to " + relationName());
         }
         return relation.outputs().get(idx);
     }

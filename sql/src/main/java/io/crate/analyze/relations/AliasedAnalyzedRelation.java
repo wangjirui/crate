@@ -26,7 +26,7 @@ import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.Symbols;
 import io.crate.metadata.ColumnIdent;
-import io.crate.sql.tree.QualifiedName;
+import io.crate.metadata.RelationName;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -45,28 +45,28 @@ import java.util.Map;
 public class AliasedAnalyzedRelation implements AnalyzedRelation, FieldResolver {
 
     private final AnalyzedRelation relation;
-    private final QualifiedName qualifiedName;
+    private final RelationName alias;
     private final Map<ColumnIdent, ColumnIdent> aliasToColumnMapping;
     private final ArrayList<Symbol> outputs;
 
-    public AliasedAnalyzedRelation(AnalyzedRelation relation, QualifiedName relationAlias) {
-        this(relation, relationAlias, List.of());
+    public AliasedAnalyzedRelation(AnalyzedRelation relation, RelationName alias) {
+        this(relation, alias, List.of());
     }
 
-    AliasedAnalyzedRelation(AnalyzedRelation relation, QualifiedName relationAlias, List<String> columnAliases) {
+    AliasedAnalyzedRelation(AnalyzedRelation relation, RelationName alias, List<String> columnAliases) {
         this.relation = relation;
-        qualifiedName = relationAlias;
+        this.alias = alias;
         aliasToColumnMapping = new HashMap<>(columnAliases.size());
         this.outputs = new ArrayList<>(relation.outputs().size());
         for (int i = 0; i < relation.outputs().size(); i++) {
             Symbol childOutput = relation.outputs().get(i);
             ColumnIdent childColumn = Symbols.pathFromSymbol(childOutput);
             if (i < columnAliases.size()) {
-                ColumnIdent alias = new ColumnIdent(columnAliases.get(i));
-                aliasToColumnMapping.put(alias, childColumn);
-                outputs.add(new ScopedSymbol(qualifiedName, alias, childOutput.valueType()));
+                ColumnIdent columnAlias = new ColumnIdent(columnAliases.get(i));
+                aliasToColumnMapping.put(columnAlias, childColumn);
+                outputs.add(new ScopedSymbol(this.alias, columnAlias, childOutput.valueType()));
             } else {
-                outputs.add(new ScopedSymbol(qualifiedName, childColumn, childOutput.valueType()));
+                outputs.add(new ScopedSymbol(alias, childColumn, childOutput.valueType()));
             }
         }
     }
@@ -76,8 +76,8 @@ public class AliasedAnalyzedRelation implements AnalyzedRelation, FieldResolver 
     }
 
     @Override
-    public QualifiedName getQualifiedName() {
-        return qualifiedName;
+    public RelationName relationName() {
+        return alias;
     }
 
     @Nonnull
@@ -88,7 +88,7 @@ public class AliasedAnalyzedRelation implements AnalyzedRelation, FieldResolver 
 
     @Override
     public String toString() {
-        return relation + " AS " + qualifiedName;
+        return relation + " AS " + alias;
     }
 
     @Override
@@ -101,7 +101,7 @@ public class AliasedAnalyzedRelation implements AnalyzedRelation, FieldResolver 
     public Symbol resolveField(ScopedSymbol field) {
         var idx = outputs.indexOf(field);
         if (idx < 0) {
-            throw new IllegalArgumentException(field + " does not belong to " + getQualifiedName());
+            throw new IllegalArgumentException(field + " does not belong to " + relationName());
         }
         return relation.outputs().get(idx);
     }

@@ -30,6 +30,7 @@ import io.crate.expression.operator.AndOperator;
 import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.CoordinatorTxnCtx;
 import io.crate.metadata.Functions;
+import io.crate.metadata.RelationName;
 import io.crate.planner.SubqueryPlanner;
 import io.crate.planner.node.dql.join.JoinType;
 import io.crate.sql.tree.QualifiedName;
@@ -184,7 +185,7 @@ public class JoinPlanBuilder {
         return sessionContext.isHashJoinEnabled() && EquiJoinDetector.isHashJoinPossible(joinType, joinCondition);
     }
 
-    private static JoinType maybeInvertPair(QualifiedName rhsName, JoinPair pair) {
+    private static JoinType maybeInvertPair(RelationName rhsName, JoinPair pair) {
         // A matching joinPair for two relations is retrieved using pairByQualifiedNames.remove(setOf(a, b))
         // This returns a pair for both cases: (a ⋈ b) and (b ⋈ a) -> invert joinType to execute correct join
         // Note that this can only happen if a re-ordering optimization happened, otherwise the joinPair would always
@@ -199,15 +200,15 @@ public class JoinPlanBuilder {
                                             Set<PlanHint> hints,
                                             LogicalPlan source,
                                             AnalyzedRelation nextRel,
-                                            Set<QualifiedName> joinNames,
-                                            Map<Set<QualifiedName>, JoinPair> joinPairs,
-                                            Map<Set<QualifiedName>, Symbol> queryParts,
+                                            Set<RelationName> joinNames,
+                                            Map<Set<RelationName>, JoinPair> joinPairs,
+                                            Map<Set<RelationName>, Symbol> queryParts,
                                             SubqueryPlanner subqueryPlanner,
                                             AnalyzedRelation leftRelation,
                                             Functions functions,
                                             CoordinatorTxnCtx txnCtx,
                                             @Nullable Row params) {
-        QualifiedName nextName = nextRel.getQualifiedName();
+        RelationName nextName = nextRel.relationName();
 
         JoinPair joinPair = removeMatch(joinPairs, joinNames, nextName);
         final JoinType type;
@@ -253,8 +254,8 @@ public class JoinPlanBuilder {
     }
 
     @Nullable
-    private static <V> V removeMatch(Map<Set<QualifiedName>, V> valuesByNames, Set<QualifiedName> names, QualifiedName nextName) {
-        for (QualifiedName name : names) {
+    private static <V> V removeMatch(Map<Set<RelationName>, V> valuesByNames, Set<RelationName> names, RelationName nextName) {
+        for (RelationName name : names) {
             V v = valuesByNames.remove(Sets.newHashSet(name, nextName));
             if (v != null) {
                 return v;

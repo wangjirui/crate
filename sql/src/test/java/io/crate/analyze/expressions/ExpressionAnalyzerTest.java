@@ -45,13 +45,9 @@ import io.crate.expression.symbol.Literal;
 import io.crate.expression.symbol.ParameterSymbol;
 import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
-import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.CoordinatorTxnCtx;
 import io.crate.metadata.Functions;
-import io.crate.metadata.Reference;
-import io.crate.metadata.ReferenceIdent;
 import io.crate.metadata.RelationName;
-import io.crate.metadata.RowGranularity;
 import io.crate.metadata.table.TableInfo;
 import io.crate.sql.parser.SqlParser;
 import io.crate.sql.tree.ArrayLiteral;
@@ -85,8 +81,6 @@ import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.sameInstance;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 /**
  * Additional tests for the ExpressionAnalyzer.
@@ -94,7 +88,7 @@ import static org.mockito.Mockito.when;
  */
 public class ExpressionAnalyzerTest extends CrateDummyClusterServiceUnitTest {
 
-    private ImmutableMap<QualifiedName, AnalyzedRelation> dummySources;
+    private ImmutableMap<RelationName, AnalyzedRelation> dummySources;
     private CoordinatorTxnCtx coordinatorTxnCtx;
     private ExpressionAnalysisContext context;
     private ParamTypeHints paramTypeHints;
@@ -106,7 +100,7 @@ public class ExpressionAnalyzerTest extends CrateDummyClusterServiceUnitTest {
     public void prepare() throws Exception {
         paramTypeHints = ParamTypeHints.EMPTY;
         DummyRelation dummyRelation = new DummyRelation("obj.x", "myObj.x", "myObj.x.AbC");
-        dummySources = ImmutableMap.of(new QualifiedName("foo"), dummyRelation);
+        dummySources = ImmutableMap.of(dummyRelation.relationName(), dummyRelation);
         coordinatorTxnCtx = CoordinatorTxnCtx.systemTransactionContext();
         context = new ExpressionAnalysisContext();
         functions = getFunctions();
@@ -208,9 +202,9 @@ public class ExpressionAnalyzerTest extends CrateDummyClusterServiceUnitTest {
         TableInfo t1 = executor.resolveTableInfo("t1");
         TableRelation relation = new TableRelation(t1);
 
-        QualifiedName a1 = new QualifiedName("a1");
-        QualifiedName a2 = new QualifiedName("a2");
-        Map<QualifiedName, AnalyzedRelation> sources = ImmutableMap.of(
+        RelationName a1 = new RelationName(null, "a1");
+        RelationName a2 = new RelationName(null, "a2");
+        Map<RelationName, AnalyzedRelation> sources = ImmutableMap.of(
             a1, new AliasedAnalyzedRelation(relation, a1),
             a2, new AliasedAnalyzedRelation(relation, a2)
         );

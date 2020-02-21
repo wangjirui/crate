@@ -62,6 +62,6 @@ public class RelationAnalyzerTest extends CrateDummyClusterServiceUnitTest {
     public void test_process_values_result_in_table_function_with_values_name() {
         AnalyzedRelation relation = executor.analyze("VALUES ([1, 2], 'a')");
         assertThat(relation, instanceOf(TableFunctionRelation.class));
-        assertThat(relation.getQualifiedName().toString(), is(ValuesFunction.NAME));
+        assertThat(relation.relationName().toString(), is(ValuesFunction.NAME));
     }
 }

@@ -27,8 +27,8 @@ import io.crate.analyze.relations.AnalyzedRelationVisitor;
 import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.ColumnIdent;
+import io.crate.metadata.RelationName;
 import io.crate.profile.ProfilingContext;
-import io.crate.sql.tree.QualifiedName;
 import io.crate.types.ObjectType;
 
 import javax.annotation.Nonnull;
@@ -40,10 +40,10 @@ public class ExplainAnalyzedStatement implements AnalyzedStatement, AnalyzedRela
     final AnalyzedStatement statement;
     private final ProfilingContext context;
     private final List<Symbol> outputs;
-    private final QualifiedName relationName;
+    private final RelationName relationName;
 
     ExplainAnalyzedStatement(String columnName, AnalyzedStatement statement, ProfilingContext context) {
-        relationName = new QualifiedName("explain");
+        relationName = new RelationName(null, "explain");
         ScopedSymbol field = new ScopedSymbol(relationName, new ColumnIdent(columnName), ObjectType.untyped());
         this.statement = statement;
         this.context = context;
@@ -75,7 +75,7 @@ public class ExplainAnalyzedStatement implements AnalyzedStatement, AnalyzedRela
     }
 
     @Override
-    public QualifiedName getQualifiedName() {
+    public RelationName relationName() {
         return relationName;
     }
 
