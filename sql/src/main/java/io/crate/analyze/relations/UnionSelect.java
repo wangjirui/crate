@@ -46,15 +46,9 @@ public class UnionSelect implements AnalyzedRelation {
         this.left = left;
         this.right = right;
         this.name = new RelationName(null, UUIDs.randomBase64UUID());
-
         List<Symbol> fieldsFromLeft = left.outputs();
         ArrayList<ScopedSymbol> outputs = new ArrayList<>(fieldsFromLeft.size());
         for (Symbol field : fieldsFromLeft) {
-            // Creating a field that points to the field of the left relation isn't 100% accurate.
-            // We're pointing to *two* symbols (both left AND right).
-            // We could either use a `InputColumn` to do that (by pointing to a position) - (but might be confusing to have InputColumns in the analysis already)
-            // Or introduce a `UnionSymbol` or `UnionField` which would take two symbols it is pointing to
-            // Since this currently has no effect we go with the left symbol until there is a good reason to change it.
             outputs.add(new ScopedSymbol(name, Symbols.pathFromSymbol(field), field.valueType()));
         }
         this.outputs = List.copyOf(outputs);
@@ -96,6 +90,6 @@ public class UnionSelect implements AnalyzedRelation {
 
     @Override
     public String toString() {
-        return "US{" + left.relationName().toString() + ',' + right.relationName().toString() + '}';
+        return left + " UNION ALL " + right;
     }
 }

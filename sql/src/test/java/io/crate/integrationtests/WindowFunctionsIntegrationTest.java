@@ -24,6 +24,8 @@ package io.crate.integrationtests;
 
 import org.junit.Test;
 
+import io.crate.testing.UseJdbc;
+
 import static io.crate.testing.TestingHelpers.printedTable;
 import static org.hamcrest.Matchers.is;
 

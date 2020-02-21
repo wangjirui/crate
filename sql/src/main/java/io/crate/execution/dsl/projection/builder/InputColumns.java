@@ -22,6 +22,7 @@
 package io.crate.execution.dsl.projection.builder;
 
 import com.google.common.base.MoreObjects;
+
 import io.crate.expression.scalar.SubscriptObjectFunction;
 import io.crate.expression.symbol.Aggregation;
 import io.crate.expression.symbol.AliasSymbol;
@@ -85,7 +86,7 @@ public final class InputColumns extends DefaultTraversalSymbolVisitor<InputColum
                 // results in poor performance of some scalar implementations
                 SymbolType symbolType = input.symbolType();
                 if (!symbolType.isValueSymbol()) {
-                    DataType valueType = input.valueType();
+                    DataType<?> valueType = input.valueType();
                     if ((symbolType == SymbolType.FUNCTION || symbolType == SymbolType.WINDOW_FUNCTION)
                         && !((Function) input).info().isDeterministic()) {
                         nonDeterministicFunctions.put(input, new InputColumn(i, valueType));
@@ -235,7 +236,10 @@ public final class InputColumns extends DefaultTraversalSymbolVisitor<InputColum
         InputColumn inputColumn = sourceSymbols.inputs.get(ref);
         if (inputColumn == null) {
             Symbol subscriptOnRoot = tryCreateSubscriptOnRoot(ref, ref.column(), sourceSymbols.inputs);
-            return subscriptOnRoot == null ? ref : subscriptOnRoot;
+            if (subscriptOnRoot == null) {
+                throw new IllegalArgumentException("Couldn't find " + ref + " in " + sourceSymbols);
+            }
+            return subscriptOnRoot;
         }
         return inputColumn;
     }

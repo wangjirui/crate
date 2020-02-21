@@ -120,6 +120,11 @@ public class AliasedAnalyzedRelation implements AnalyzedRelation, FieldResolver 
         if (!field.relation().equals(alias)) {
             throw new IllegalArgumentException(field + " does not belong to " + relationName());
         }
-        return relation.getField(field.column(), Operation.READ);
+        ColumnIdent childColumnName = aliasToColumnMapping.get(field.column());
+        var result = relation.getField(childColumnName, Operation.READ);
+        if (result == null) {
+            throw new IllegalArgumentException(field + " does not belong to " + relationName());
+        }
+        return result;
     }
 }

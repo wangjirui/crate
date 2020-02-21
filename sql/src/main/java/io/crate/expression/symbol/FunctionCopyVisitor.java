@@ -84,10 +84,12 @@ public abstract class FunctionCopyVisitor<C> extends SymbolVisitor<C, Symbol> {
     private Function twoArgs(Function func, C context) {
         assert func.arguments().size() == 2 : "size of arguments must be two";
         Symbol arg1 = func.arguments().get(0);
-        Symbol newArg1 = requireNonNull(arg1.accept(this, context), "function arguments must never be NULL");
+        Symbol newArg1 = arg1.accept(this, context);
+        assert newArg1 != null : arg1 + " became NULL, symbols must never conver to NULL";
 
         Symbol arg2 = func.arguments().get(1);
-        Symbol newArg2 = requireNonNull(arg2.accept(this, context), "function arguments must never be NULL");
+        Symbol newArg2 = arg2.accept(this, context);
+        assert newArg2 != null : arg2 + " became NULL, symbols must never conver to NULL";
 
         Symbol filter = func.filter();
         Symbol newFilter = processNullable(filter, context);
