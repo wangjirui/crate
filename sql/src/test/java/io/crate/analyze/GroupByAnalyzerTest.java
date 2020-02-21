@@ -257,7 +257,7 @@ public class GroupByAnalyzerTest extends CrateDummyClusterServiceUnitTest {
             analyze("select DISTINCT max(users.id) from users " +
                     "  inner join users_multi_pk on users.id = users_multi_pk.id " +
                     "group by users.name order by 1");
-        assertThat(relation, instanceOf(MultiSourceSelect.class));
+        assertThat(relation, instanceOf(QueriedSelectRelation.class));
         assertThat(relation.isDistinct(), is(true));
         assertThat(relation,
             isSQL("SELECT max(doc.users.id) GROUP BY doc.users.name ORDER BY max(doc.users.id)"));
@@ -282,13 +282,13 @@ public class GroupByAnalyzerTest extends CrateDummyClusterServiceUnitTest {
                     "  select distinct id from users group by id, name order by 1" +
                     ") t order by 1 desc");
         assertThat(relation, instanceOf(QueriedSelectRelation.class));
-        QueriedSelectRelation<?> outerRelation = (QueriedSelectRelation<?>) relation;
+        QueriedSelectRelation outerRelation = (QueriedSelectRelation) relation;
         assertThat(outerRelation.outputs(), contains(isField("id")));
 
         assertThat(outerRelation.groupBy(), Matchers.empty());
         assertThat(outerRelation.orderBy().orderBySymbols(), contains(isField("id")));
 
-        AliasedAnalyzedRelation aliasedRelation = (AliasedAnalyzedRelation) outerRelation.subRelation();
+        AliasedAnalyzedRelation aliasedRelation = (AliasedAnalyzedRelation) outerRelation.from().get(1);
         AnalyzedRelation innerRelation = aliasedRelation.relation();
         assertThat(innerRelation.isDistinct(), is(true));
         assertThat(innerRelation.groupBy(), contains(isReference("id"), isReference("name")));

@@ -22,7 +22,6 @@
 
 package io.crate.analyze;
 
-import io.crate.analyze.relations.AbstractTableRelation;
 import io.crate.analyze.relations.AnalyzedRelation;
 import io.crate.metadata.sys.SysClusterTableInfo;
 import io.crate.test.integration.CrateDummyClusterServiceUnitTest;
@@ -30,6 +29,7 @@ import io.crate.testing.SQLExecutor;
 import org.junit.Before;
 import org.junit.Test;
 
+import static io.crate.testing.RelationMatchers.isSystemTable;
 import static io.crate.testing.SymbolMatchers.isAlias;
 import static io.crate.testing.SymbolMatchers.isFunction;
 import static io.crate.testing.SymbolMatchers.isLiteral;
@@ -196,12 +196,12 @@ public class ShowStatementsAnalyzerTest extends CrateDummyClusterServiceUnitTest
 
     @Test
     public void testRewriteOfTransactionIsolation() {
-        QueriedSelectRelation<AbstractTableRelation<?>> stmt = analyze("show transaction isolation level");
-        assertThat(stmt.subRelation().tableInfo().ident(), is(SysClusterTableInfo.IDENT));
+        QueriedSelectRelation stmt = analyze("show transaction isolation level");
+        assertThat(stmt.from(), contains(isSystemTable(SysClusterTableInfo.IDENT)));
         assertThat(stmt.outputs(), contains(isAlias("transaction_isolation", isLiteral("read uncommitted"))));
 
         stmt = analyze("show transaction_isolation");
-        assertThat(stmt.subRelation().tableInfo().ident(), is(SysClusterTableInfo.IDENT));
+        assertThat(stmt.from(), contains(isSystemTable(SysClusterTableInfo.IDENT)));
         assertThat(stmt.outputs(), contains(isAlias("transaction_isolation", isLiteral("read uncommitted"))));
     }
 }

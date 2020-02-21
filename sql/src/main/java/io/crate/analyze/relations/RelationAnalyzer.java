@@ -25,7 +25,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimap;
 import io.crate.analyze.HavingClause;
-import io.crate.analyze.MultiSourceSelect;
 import io.crate.analyze.OrderBy;
 import io.crate.analyze.ParamTypeHints;
 import io.crate.analyze.QueriedSelectRelation;
@@ -172,9 +171,10 @@ public class RelationAnalyzer extends DefaultTraversalVisitor<AnalyzedRelation, 
         for (Symbol field : childRelationFields) {
             selectAnalysis.add(Symbols.pathFromSymbol(field), field);
         }
-        return new QueriedSelectRelation<>(
+        return new QueriedSelectRelation(
             false,
-            childRelation,
+            List.of(childRelation),
+            List.of(),
             new QuerySpec(
                 selectAnalysis.outputSymbols(),
                 WhereClause.MATCH_ALL,
@@ -359,21 +359,12 @@ public class RelationAnalyzer extends DefaultTraversalVisitor<AnalyzedRelation, 
             longSymbolOrNull(node.getLimit(), expressionAnalyzer, expressionAnalysisContext),
             longSymbolOrNull(node.getOffset(), expressionAnalyzer, expressionAnalysisContext)
         );
-        AnalyzedRelation relation;
-        if (context.sources().size() == 1) {
-            relation = new QueriedSelectRelation<>(
-                isDistinct,
-                Iterables.getOnlyElement(context.sources().values()),
-                querySpec
-            );
-        } else {
-            relation = new MultiSourceSelect(
-                isDistinct,
-                context.sources(),
-                querySpec,
-                context.joinPairs()
-            );
-        }
+        QueriedSelectRelation relation = new QueriedSelectRelation(
+            isDistinct,
+            List.copyOf(context.sources().values()),
+            context.joinPairs(),
+            querySpec
+        );
         statementContext.endRelation();
         return relation;
     }

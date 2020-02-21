@@ -25,7 +25,7 @@ package io.crate.planner.operators;
 import io.crate.analyze.AnalyzedInsertStatement;
 import io.crate.analyze.AnalyzedStatement;
 import io.crate.analyze.AnalyzedStatementVisitor;
-import io.crate.analyze.MultiSourceSelect;
+import io.crate.analyze.HavingClause;
 import io.crate.analyze.OrderBy;
 import io.crate.analyze.QueriedSelectRelation;
 import io.crate.analyze.WhereClause;
@@ -337,59 +337,17 @@ public class LogicalPlanner {
             );
         }
 
-        public LogicalPlan visitMultiSourceSelect(MultiSourceSelect mss, PlanBuilderContext context) {
-            SplitPoints splitPoints = SplitPointsBuilder.create(mss);
-            // TODO: could we merge MultiSourceSelect with QueriedSelectRelation?
-            // TODO: use split points
-            // var newCtx = new PlanBuilderContext(splitPoints.toCollect(), mss.where());
-            var source = JoinPlanBuilder.createNodes(
-                mss,
-                mss.where(),
-                subqueryPlanner,
-                functions,
-                txnCtx,
-                hints,
-                tableStats,
-                params
-            );
-            return
-                Eval.create(
-                    Limit.create(
-                        Order.create(
-                            Distinct.create(
-                                ProjectSet.create(
-                                    WindowAgg.create(
-                                        Filter.create(
-                                            groupByOrAggregate(
-                                                source,
-                                                mss.groupBy(),
-                                                splitPoints.aggregates(),
-                                                tableStats
-                                            ),
-                                            mss.having()
-                                        ),
-                                        splitPoints.windowFunctions()
-                                    ),
-                                    splitPoints.tableFunctions()
-                                ),
-                                mss.isDistinct(),
-                                mss.outputs(),
-                                tableStats
-                            ),
-                            mss.orderBy()
-                        ),
-                        mss.limit(),
-                        mss.offset()
-                    ),
-                    mss.outputs()
-                );
-        }
-
         @Override
-        public LogicalPlan visitQueriedSelectRelation(QueriedSelectRelation<?> relation, PlanBuilderContext context) {
+        public LogicalPlan visitQueriedSelectRelation(QueriedSelectRelation relation, PlanBuilderContext context) {
             SplitPoints splitPoints = SplitPointsBuilder.create(relation);
-            var newCtx = new PlanBuilderContext(splitPoints.toCollect(), relation.where().add(context.whereClause.queryOrFallback()));
-            LogicalPlan source = relation.subRelation().accept(this, newCtx);
+            var newCtx = new PlanBuilderContext(splitPoints.toCollect(), relation.where());
+            List<AnalyzedRelation> from = relation.from();
+            AnalyzedRelation sourceRelation = from.get(0);
+            LogicalPlan source = sourceRelation.accept(this, newCtx);
+            if (from.size() > 1) {
+                throw new UnsupportedOperationException("TODO: use joinBuilder");
+            }
+            HavingClause having = relation.having();
             return
                 Eval.create(
                     Limit.create(
@@ -404,7 +362,7 @@ public class LogicalPlanner {
                                                 splitPoints.aggregates(),
                                                 tableStats
                                             ),
-                                            relation.having()
+                                            having == null ? null : context.whereClause.add(having.queryOrFallback())
                                         ),
                                         splitPoints.windowFunctions()
                                     ),
@@ -419,7 +377,7 @@ public class LogicalPlanner {
                         relation.limit(),
                         relation.offset()
                     ),
-                    relation.outputs()
+                    context.toCollect
                 );
         }
     }

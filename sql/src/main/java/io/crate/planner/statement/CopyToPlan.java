@@ -258,12 +258,12 @@ public final class CopyToPlan implements Plan {
             null,
             null
         );
-        QueriedSelectRelation<DocTableRelation> subRelation = new QueriedSelectRelation<>(
+        QueriedSelectRelation subRelation = new QueriedSelectRelation(
             false,
-            tableRelation,
+            List.of(tableRelation),
+            List.of(),
             querySpec
         );
-
         return new BoundCopyTo(
             subRelation,
             Literal.of(DataTypes.STRING.value(eval.apply(copyTo.uri()))),

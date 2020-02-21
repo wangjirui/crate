@@ -22,7 +22,6 @@
 package io.crate.analyze;
 
 import com.google.common.collect.ImmutableList;
-import io.crate.analyze.relations.AliasedAnalyzedRelation;
 import io.crate.analyze.relations.AnalyzedRelation;
 import io.crate.analyze.relations.TableFunctionRelation;
 import io.crate.analyze.relations.TableRelation;
@@ -56,21 +55,17 @@ import io.crate.expression.symbol.Symbols;
 import io.crate.metadata.FunctionInfo;
 import io.crate.metadata.sys.SysNodesTableInfo;
 import io.crate.sql.parser.ParsingException;
-import io.crate.sql.tree.QualifiedName;
 import io.crate.test.integration.CrateDummyClusterServiceUnitTest;
 import io.crate.testing.SQLExecutor;
 import io.crate.types.ArrayType;
 import io.crate.types.DataType;
 import io.crate.types.DataTypes;
-import org.apache.lucene.util.BytesRef;
-import org.elasticsearch.common.lucene.BytesRefs;
 import org.hamcrest.Matchers;
 import org.hamcrest.core.IsInstanceOf;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -80,7 +75,6 @@ import static io.crate.testing.SymbolMatchers.isFunction;
 import static io.crate.testing.SymbolMatchers.isLiteral;
 import static io.crate.testing.SymbolMatchers.isReference;
 import static io.crate.testing.TestingHelpers.isSQL;
-import static io.crate.testing.TestingHelpers.mapToSortedString;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.contains;
@@ -409,8 +403,8 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
 
     @Test
     public void testGranularityWithSingleAggregation() throws Exception {
-        QueriedSelectRelation<TableRelation> table = analyze("select count(*) from sys.nodes");
-        assertEquals(table.subRelation().tableInfo().ident(), SysNodesTableInfo.IDENT);
+        QueriedSelectRelation table = analyze("select count(*) from sys.nodes");
+        assertEquals(((TableRelation) table.from().get(0)).tableInfo().ident(), SysNodesTableInfo.IDENT);
     }
 
     @Test
@@ -657,7 +651,7 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
     @Test
     public void test2From() throws Exception {
         AnalyzedRelation relation = analyze("select a.name from users a, users b");
-        assertThat(relation, instanceOf(MultiSourceSelect.class));
+        assertThat(relation, instanceOf(QueriedSelectRelation.class));
     }
 
     @Test
@@ -677,12 +671,12 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
     @Test
     public void testJoin() throws Exception {
         AnalyzedRelation relation = analyze("select * from users, users_multi_pk where users.id = users_multi_pk.id");
-        assertThat(relation, instanceOf(MultiSourceSelect.class));
+        assertThat(relation, instanceOf(QueriedSelectRelation.class));
     }
 
     @Test
     public void testInnerJoinSyntaxDoesNotExtendsWhereClause() throws Exception {
-        MultiSourceSelect mss = (MultiSourceSelect) analyze(
+        QueriedSelectRelation mss = (QueriedSelectRelation) analyze(
             "select * from users inner join users_multi_pk on users.id = users_multi_pk.id");
         assertThat(mss.where().query(), isSQL("null"));
         assertThat(mss.joinPairs().get(0).condition(),
@@ -691,9 +685,9 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
 
     @Test
     public void testJoinSyntaxWithMoreThan2Tables() throws Exception {
-        MultiSourceSelect relation = (MultiSourceSelect) analyze("select * from users u1 " +
-                                                                 "join users_multi_pk u2 on u1.id = u2.id " +
-                                                                 "join users_clustered_by_only u3 on u2.id = u3.id ");
+        QueriedSelectRelation relation = analyze("select * from users u1 " +
+                                                 "join users_multi_pk u2 on u1.id = u2.id " +
+                                                 "join users_clustered_by_only u3 on u2.id = u3.id ");
         assertThat(relation.where().query(), isSQL("null"));
 
         assertThat(relation.joinPairs().get(0).condition(),
@@ -710,7 +704,7 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
 
     @Test
     public void testJoinUsingSyntax() throws Exception {
-        MultiSourceSelect relation = analyze("select * from users join users_multi_pk using (id, name)");
+        QueriedSelectRelation relation = analyze("select * from users join users_multi_pk using (id, name)");
         assertThat(relation.where().query(), isSQL("null"));
         assertEquals(relation.joinPairs().size(), 1);
         assertThat(relation.joinPairs().get(0).condition(),
@@ -725,7 +719,7 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
 
     @Test
     public void testInnerJoinSyntaxWithWhereClause() throws Exception {
-        MultiSourceSelect relation = (MultiSourceSelect) analyze(
+        QueriedSelectRelation relation = (QueriedSelectRelation) analyze(
             "select * from users join users_multi_pk on users.id = users_multi_pk.id " +
             "where users.name = 'Arthur'");
 
@@ -733,7 +727,7 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
             isSQL("(doc.users.id = doc.users_multi_pk.id)"));
 
         assertThat(relation.where().query(), isSQL("(doc.users.name = 'Arthur')"));
-        AnalyzedRelation users = relation.sources().get(QualifiedName.of("doc", "users"));
+        AnalyzedRelation users = relation.from().get(0);
         assertThat(users.where(), is(WhereClause.MATCH_ALL));
     }
 
@@ -743,10 +737,10 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
 
         assertThat(relation.where().queryOrFallback(),
                    isSQL("((t1.name = 'foo') AND (t2.name = 'bar'))"));
-        assertThat(relation, instanceOf(MultiSourceSelect.class));
+        assertThat(relation, instanceOf(QueriedSelectRelation.class));
 
-        AnalyzedRelation subRel1 = ((MultiSourceSelect) relation).sources().get(QualifiedName.of("t1"));
-        AnalyzedRelation subRel2 = ((MultiSourceSelect) relation).sources().get(QualifiedName.of("t2"));
+        AnalyzedRelation subRel1 = ((QueriedSelectRelation) relation).from().get(0);
+        AnalyzedRelation subRel2 = ((QueriedSelectRelation) relation).from().get(1);
 
         assertThat(subRel1.where().queryOrFallback(), isSQL("true"));
         assertThat(subRel2.where().queryOrFallback(), isSQL("true"));
@@ -755,13 +749,13 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
     @Test
     public void testJoinWithOrderBy() throws Exception {
         AnalyzedRelation relation = analyze("select users.id from users, users_multi_pk order by users.id");
-        assertThat(relation, instanceOf(MultiSourceSelect.class));
+        assertThat(relation, instanceOf(QueriedSelectRelation.class));
 
-        MultiSourceSelect mss = (MultiSourceSelect) relation;
+        QueriedSelectRelation mss = (QueriedSelectRelation) relation;
 
         assertThat(mss.orderBy(), isSQL("doc.users.id"));
-        Iterator<Map.Entry<QualifiedName, AnalyzedRelation>> it = mss.sources().entrySet().iterator();
-        AnalyzedRelation usersRel = it.next().getValue();
+        var it = mss.from().iterator();
+        AnalyzedRelation usersRel = it.next();
         assertThat(usersRel.orderBy(), nullValue());
     }
 
@@ -769,7 +763,7 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
     public void testJoinWithOrderByOnCount() throws Exception {
         AnalyzedRelation relation = analyze("select count(*) from users u1, users_multi_pk u2 " +
                                             "order by 1");
-        MultiSourceSelect mss = (MultiSourceSelect) relation;
+        QueriedSelectRelation mss = (QueriedSelectRelation) relation;
         assertThat(mss.orderBy(), isSQL("count(*)"));
     }
 
@@ -777,10 +771,10 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
     public void testJoinWithMultiRelationOrderBy() throws Exception {
         AnalyzedRelation relation = analyze(
             "select u1.id from users u1, users_multi_pk u2 order by u2.id, u1.name || u2.name");
-        assertThat(relation, instanceOf(MultiSourceSelect.class));
+        assertThat(relation, instanceOf(QueriedSelectRelation.class));
 
-        MultiSourceSelect mss = (MultiSourceSelect) relation;
-        AnalyzedRelation u1 = mss.sources().values().iterator().next();
+        QueriedSelectRelation mss = (QueriedSelectRelation) relation;
+        AnalyzedRelation u1 = mss.from().iterator().next();
         assertThat(u1.outputs(), allOf(
             hasItem(isField("name")),
             hasItem(isField("id")))
@@ -923,8 +917,7 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
 
     @Test
     public void testOrderByWithOrdinal() throws Exception {
-        QueriedSelectRelation<AliasedAnalyzedRelation> relation = analyze(
-            "select name from users u order by 1");
+        QueriedSelectRelation relation = analyze("select name from users u order by 1");
         assertThat(
             relation.outputs(),
             equalTo(relation.orderBy().orderBySymbols())
@@ -1781,9 +1774,9 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
 
     @Test
     public void testScalarCanBeUsedInFromClause() {
-        QueriedSelectRelation<?> relation = analyze("select * from abs(1)");
+        QueriedSelectRelation relation = analyze("select * from abs(1)");
         assertThat(relation.outputs(), isSQL("abs"));
-        assertThat(relation.subRelation(), instanceOf(TableFunctionRelation.class));
+        assertThat(relation.from().get(0), instanceOf(TableFunctionRelation.class));
     }
 
     @Test

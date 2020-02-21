@@ -143,8 +143,8 @@ public class WhereClauseAnalyzerTest extends CrateDummyClusterServiceUnitTest {
 
     private WhereClause analyzeSelectWhere(String stmt) {
         AnalyzedRelation rel = e.analyze(stmt);
-        if (rel instanceof QueriedSelectRelation && ((QueriedSelectRelation<?>) rel).subRelation() instanceof DocTableRelation) {
-            DocTableRelation docTableRelation = (DocTableRelation) ((QueriedSelectRelation<?>) rel).subRelation();
+        if (rel instanceof QueriedSelectRelation && ((QueriedSelectRelation) rel).from().get(0) instanceof DocTableRelation) {
+            DocTableRelation docTableRelation = (DocTableRelation) ((QueriedSelectRelation) rel).from().get(0);
             WhereClauseOptimizer.DetailedQuery detailedQuery = WhereClauseOptimizer.optimize(
                 new EvaluatingNormalizer(getFunctions(), RowGranularity.CLUSTER, null, docTableRelation),
                 rel.where().queryOrFallback(),

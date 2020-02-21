@@ -22,25 +22,12 @@
 
 package io.crate.planner.operators;
 
-import io.crate.analyze.MultiSourceSelect;
-import io.crate.data.Row;
-import io.crate.execution.dsl.phases.HashJoinPhase;
-import io.crate.execution.dsl.phases.NestedLoopPhase;
 import io.crate.execution.dsl.projection.builder.ProjectionBuilder;
 import io.crate.metadata.CoordinatorTxnCtx;
 import io.crate.metadata.Functions;
-import io.crate.metadata.Reference;
 import io.crate.metadata.RelationName;
 import io.crate.metadata.Schemas;
-import io.crate.planner.ExecutionPlan;
-import io.crate.planner.Merge;
 import io.crate.planner.PlannerContext;
-import io.crate.planner.SubqueryPlanner;
-import io.crate.planner.node.dql.Collect;
-import io.crate.planner.node.dql.join.Join;
-import io.crate.planner.node.dql.join.JoinType;
-import io.crate.statistics.Stats;
-import io.crate.statistics.TableStats;
 import io.crate.test.integration.CrateDummyClusterServiceUnitTest;
 import io.crate.testing.SQLExecutor;
 import io.crate.testing.T3;
@@ -50,23 +37,12 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
 
 import static io.crate.analyze.TableDefinitions.TEST_DOC_LOCATIONS_TABLE_DEFINITION;
 import static io.crate.analyze.TableDefinitions.USER_TABLE_DEFINITION;
-import static io.crate.analyze.TableDefinitions.USER_TABLE_IDENT;
 import static io.crate.planner.operators.LogicalPlannerTest.isPlan;
-import static io.crate.testing.SymbolMatchers.isInputColumn;
-import static io.crate.testing.SymbolMatchers.isReference;
 import static io.crate.testing.TestingHelpers.getFunctions;
-import static io.crate.testing.TestingHelpers.isSQL;
-import static org.hamcrest.Matchers.hasItem;
-import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.collection.IsIterableContainingInOrder.contains;
 
 public class JoinTest extends CrateDummyClusterServiceUnitTest {
 
@@ -96,28 +72,11 @@ public class JoinTest extends CrateDummyClusterServiceUnitTest {
         txnCtx.sessionContext().setHashJoinEnabled(true);
     }
 
-    private LogicalPlan createLogicalPlan(MultiSourceSelect mss, TableStats tableStats) {
-        LogicalPlanner logicalPlanner = new LogicalPlanner(
-            functions,
-            tableStats,
-            () -> clusterService.state().nodes().getMinNodeVersion()
-        );
-        SubqueryPlanner subqueryPlanner = new SubqueryPlanner((s) -> logicalPlanner.planSubSelect(s, plannerCtx));
-        return JoinPlanBuilder.createNodes(mss, mss.where(), subqueryPlanner, functions, txnCtx, Set.of(), tableStats, null);
-    }
-
-    private Join buildJoin(LogicalPlan operator) {
-        return (Join) operator.build(plannerCtx, projectionBuilder, -1, 0, null, null, Row.EMPTY, SubQueryResults.EMPTY);
-    }
-
-    private Join plan(MultiSourceSelect mss, TableStats tableStats) {
-        return buildJoin(createLogicalPlan(mss, tableStats));
-    }
-
+    /*
     @Test
     public void testNestedLoop_TablesAreSwitchedIfLeftIsSmallerThanRight() {
         txnCtx.sessionContext().setHashJoinEnabled(false);
-        MultiSourceSelect mss = e.analyze("select * from users, locations where users.id = locations.id");
+        QueriedSelectRelation mss = e.analyze("select * from users, locations where users.id = locations.id");
 
         TableStats tableStats = new TableStats();
         Map<RelationName, Stats> rowCountByTable = new HashMap<>();
@@ -466,6 +425,7 @@ public class JoinTest extends CrateDummyClusterServiceUnitTest {
         e.plan("select * from t1, t2 " +
                "where match(t1.a, 'Lanistas experimentum!') or match(t2.b, 'Rationes ridetis!')");
     }
+     */
 
     /**
      * This scenario will result having a {@link io.crate.analyze.relations.AbstractTableRelation} as a direct

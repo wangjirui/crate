@@ -21,6 +21,7 @@
 
 package io.crate.analyze;
 
+import io.crate.analyze.relations.DocTableRelation;
 import io.crate.data.RowN;
 import io.crate.exceptions.OperationOnInaccessibleRelationException;
 import io.crate.exceptions.PartitionUnknownException;
@@ -38,6 +39,7 @@ import io.crate.planner.operators.SubQueryResults;
 import io.crate.planner.statement.CopyFromPlan;
 import io.crate.planner.statement.CopyToPlan;
 import io.crate.test.integration.CrateDummyClusterServiceUnitTest;
+import io.crate.testing.RelationMatchers;
 import io.crate.testing.SQLExecutor;
 import org.junit.Before;
 import org.junit.Test;
@@ -180,7 +182,7 @@ public class CopyAnalyzerTest extends CrateDummyClusterServiceUnitTest {
     @Test
     public void testCopyToDirectory() throws Exception {
         BoundCopyTo analysis = analyze("COPY users TO DIRECTORY '/foo'");
-        TableInfo tableInfo = analysis.relation().subRelation().tableInfo();
+        TableInfo tableInfo = ((DocTableRelation) analysis.relation().from().get(0)).tableInfo();
         assertThat(tableInfo.ident(), is(USER_TABLE_IDENT));
         assertThat(analysis.uri(), isLiteral("/foo"));
     }
@@ -206,8 +208,7 @@ public class CopyAnalyzerTest extends CrateDummyClusterServiceUnitTest {
     public void testCopyToFileWithCompressionParams() throws Exception {
         BoundCopyTo analysis = analyze(
             "COPY users TO DIRECTORY '/blah' WITH (compression='gzip')");
-        TableInfo tableInfo = analysis.relation().subRelation().tableInfo();
-        assertThat(tableInfo.ident(), is(USER_TABLE_IDENT));
+        assertThat(analysis.relation().from(), contains(RelationMatchers.isDocTable(USER_TABLE_IDENT)));
 
         assertThat(analysis.uri(), isLiteral("/blah"));
         assertThat(analysis.compressionType(), is(WriterProjection.CompressionType.GZIP));
@@ -223,8 +224,7 @@ public class CopyAnalyzerTest extends CrateDummyClusterServiceUnitTest {
     @Test
     public void testCopyToFileWithPartitionedTable() throws Exception {
         BoundCopyTo analysis = analyze("COPY parted TO DIRECTORY '/blah'");
-        TableInfo tableInfo = analysis.relation().subRelation().tableInfo();
-        assertThat(tableInfo.ident(), is(TEST_PARTITIONED_TABLE_IDENT));
+        assertThat(analysis.relation().from(), contains(RelationMatchers.isDocTable(TEST_PARTITIONED_TABLE_IDENT)));
         assertThat(analysis.overwrites().size(), is(1));
     }
 
@@ -292,8 +292,7 @@ public class CopyAnalyzerTest extends CrateDummyClusterServiceUnitTest {
     public void testCopyToFileWithSelectedColumnsAndOutputFormatParam() throws Exception {
         BoundCopyTo analysis = analyze(
             "COPY users (id, name) TO DIRECTORY '/blah' WITH (format='json_object')");
-        TableInfo tableInfo = analysis.relation().subRelation().tableInfo();
-        assertThat(tableInfo.ident(), is(USER_TABLE_IDENT));
+        assertThat(analysis.relation().from(), contains(RelationMatchers.isDocTable(USER_TABLE_IDENT)));
 
         assertThat(analysis.uri(), isLiteral("/blah"));
         assertThat(analysis.outputFormat(), is(WriterProjection.OutputFormat.JSON_OBJECT));

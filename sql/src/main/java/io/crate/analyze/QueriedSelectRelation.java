@@ -24,6 +24,8 @@ package io.crate.analyze;
 
 import io.crate.analyze.relations.AnalyzedRelation;
 import io.crate.analyze.relations.AnalyzedRelationVisitor;
+import io.crate.analyze.relations.JoinPair;
+import io.crate.common.collections.Lists2;
 import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.Symbols;
 import io.crate.sql.tree.QualifiedName;
@@ -31,24 +33,27 @@ import io.crate.sql.tree.QualifiedName;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.List;
-import java.util.StringJoiner;
 
-public class QueriedSelectRelation<T extends AnalyzedRelation> implements AnalyzedRelation {
+public class QueriedSelectRelation implements AnalyzedRelation {
 
+    private final List<AnalyzedRelation> from;
+    private final List<JoinPair> joinPairs;
     private final QuerySpec querySpec;
     private final boolean isDistinct;
-    private final T subRelation;
 
     public QueriedSelectRelation(boolean isDistinct,
-                                 T subRelation,
+                                 List<AnalyzedRelation> from,
+                                 List<JoinPair> joinPairs,
                                  QuerySpec querySpec) {
+        assert from.size() >= 1 : "QueriedSelectRelation must have at least 1 relation in FROM";
         this.isDistinct = isDistinct;
-        this.subRelation = subRelation;
+        this.from = from;
+        this.joinPairs = joinPairs;
         this.querySpec = querySpec;
     }
 
-    public T subRelation() {
-        return subRelation;
+    public List<AnalyzedRelation> from() {
+        return from;
     }
 
     @Override
@@ -63,7 +68,8 @@ public class QueriedSelectRelation<T extends AnalyzedRelation> implements Analyz
 
     @Override
     public QualifiedName getQualifiedName() {
-        return subRelation.getQualifiedName();
+        throw new UnsupportedOperationException(
+            "QueriedSelectRelation has no name. It must be beneath an aliased-relation to be addressable by name");
     }
 
     @Nonnull
@@ -108,10 +114,14 @@ public class QueriedSelectRelation<T extends AnalyzedRelation> implements Analyz
 
     @Override
     public String toString() {
-        StringJoiner joiner = new StringJoiner(", ");
-        for (Symbol output : outputs()) {
-            joiner.add(Symbols.pathFromSymbol(output).sqlFqn());
-        }
-        return "SELECT " + joiner.toString() + " FROM (" + subRelation + ')';
+        return "SELECT "
+               + Lists2.joinOn(", ", outputs(), x -> Symbols.pathFromSymbol(x).sqlFqn())
+               + " FROM ("
+               + Lists2.joinOn(", ", from, x -> x.getQualifiedName().toString())
+               + ')';
+    }
+
+    public List<JoinPair> joinPairs() {
+        return joinPairs;
     }
 }

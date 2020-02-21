@@ -42,6 +42,7 @@ import io.crate.expression.symbol.SymbolVisitor;
 import io.crate.metadata.Reference;
 import io.crate.metadata.RelationName;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -156,15 +157,6 @@ public class TableIdentsExtractor {
         }
 
         @Override
-        public Collection<RelationName> visitMultiSourceSelect(MultiSourceSelect multiSourceSelect, Void context) {
-            Collection<RelationName> relationNames = new HashSet<>(multiSourceSelect.sources().size());
-            for (AnalyzedRelation relation : multiSourceSelect.sources().values()) {
-                relationNames.addAll(process(relation, context));
-            }
-            return relationNames;
-        }
-
-        @Override
         public Collection<RelationName> visitTableRelation(TableRelation tableRelation, Void context) {
             return Collections.singletonList(tableRelation.tableInfo().ident());
         }
@@ -181,7 +173,11 @@ public class TableIdentsExtractor {
 
         @Override
         public Collection<RelationName> visitQueriedSelectRelation(QueriedSelectRelation relation, Void context) {
-            return process(relation.subRelation(), context);
+            ArrayList<RelationName> names = new ArrayList<>();
+            for (AnalyzedRelation analyzedRelation : relation.from()) {
+                names.addAll(analyzedRelation.accept(this, context));
+            }
+            return names;
         }
     }
 }

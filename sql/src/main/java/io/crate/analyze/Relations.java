@@ -73,15 +73,6 @@ public class Relations {
         }
 
         @Override
-        public Void visitMultiSourceSelect(MultiSourceSelect multiSourceSelect, Consumer<? super Symbol> consumer) {
-            multiSourceSelect.visitSymbols(consumer);
-            for (AnalyzedRelation relation : multiSourceSelect.sources().values()) {
-                process(relation, consumer);
-            }
-            return null;
-        }
-
-        @Override
         public Void visitUnionSelect(UnionSelect unionSelect, Consumer<? super Symbol> consumer) {
             unionSelect.visitSymbols(consumer);
             process(unionSelect.left(), consumer);
@@ -108,9 +99,11 @@ public class Relations {
         }
 
         @Override
-        public Void visitQueriedSelectRelation(QueriedSelectRelation<?> relation, Consumer<? super Symbol> consumer) {
+        public Void visitQueriedSelectRelation(QueriedSelectRelation relation, Consumer<? super Symbol> consumer) {
             relation.visitSymbols(consumer);
-            process(relation.subRelation(), consumer);
+            for (AnalyzedRelation analyzedRelation : relation.from()) {
+                analyzedRelation.accept(this, consumer);
+            }
             return null;
         }
 

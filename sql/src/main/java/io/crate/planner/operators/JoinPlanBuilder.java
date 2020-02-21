@@ -23,13 +23,9 @@
 package io.crate.planner.operators;
 
 import io.crate.action.sql.SessionContext;
-import io.crate.analyze.MultiSourceSelect;
-import io.crate.analyze.WhereClause;
 import io.crate.analyze.relations.AnalyzedRelation;
 import io.crate.analyze.relations.JoinPair;
-import io.crate.analyze.relations.QuerySplitter;
 import io.crate.data.Row;
-import io.crate.execution.engine.join.JoinOperations;
 import io.crate.expression.operator.AndOperator;
 import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.CoordinatorTxnCtx;
@@ -41,11 +37,7 @@ import io.crate.statistics.TableStats;
 import org.elasticsearch.common.util.set.Sets;
 
 import javax.annotation.Nullable;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -61,6 +53,7 @@ import java.util.stream.Stream;
  */
 public class JoinPlanBuilder {
 
+    /*
     static LogicalPlan createNodes(MultiSourceSelect mss,
                                    WhereClause where,
                                    SubqueryPlanner subqueryPlanner,
@@ -147,6 +140,7 @@ public class JoinPlanBuilder {
 
         return joinPlan;
     }
+     */
 
     private static LogicalPlan createJoinPlan(LogicalPlan lhsPlan,
                                               LogicalPlan rhsPlan,

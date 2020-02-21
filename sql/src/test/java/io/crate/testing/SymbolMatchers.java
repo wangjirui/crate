@@ -35,7 +35,6 @@ import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.Reference;
 import io.crate.metadata.RelationName;
 import io.crate.types.DataType;
-import org.hamcrest.FeatureMatcher;
 import org.hamcrest.Matcher;
 import org.hamcrest.Matchers;
 
@@ -43,6 +42,7 @@ import javax.annotation.Nullable;
 import java.util.List;
 import java.util.ListIterator;
 
+import static io.crate.testing.MoreMatchers.withFeature;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.both;
 import static org.hamcrest.Matchers.contains;
@@ -120,18 +120,6 @@ public class SymbolMatchers {
             withFeature(s -> ((Reference) s).ident().tableIdent(), "relationName", relName),
             withFeature(Symbol::valueType, "valueType", type)
         );
-    }
-
-    private static <T> FeatureMatcher<Symbol, T> withFeature(java.util.function.Function<? super Symbol, T> getFeature,
-                                                   String featureName,
-                                                   Matcher<T> featureMatcher) {
-        return new FeatureMatcher<>(featureMatcher, featureName, featureName) {
-
-            @Override
-            protected T featureValueOf(Symbol actual) {
-                return getFeature.apply(actual);
-            }
-        };
     }
 
     public static Matcher<Symbol> isReference(final String expectedName, @Nullable final DataType dataType) {

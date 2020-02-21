@@ -53,7 +53,7 @@ public class UnionAnalyzerTest extends CrateDummyClusterServiceUnitTest {
 
     @Test
     public void testUnion2Tables() {
-        QueriedSelectRelation<UnionSelect> relation = analyze(
+        QueriedSelectRelation relation = analyze(
             "select id, text from users " +
             "union all " +
             "select id, name from users_multi_pk " +
@@ -64,7 +64,7 @@ public class UnionAnalyzerTest extends CrateDummyClusterServiceUnitTest {
         assertThat(relation.limit(), isLiteral(10L));
         assertThat(relation.offset(), isLiteral(20L));
 
-        UnionSelect tableUnion = relation.subRelation();
+        UnionSelect tableUnion = ((UnionSelect) relation.from().get(0));
         assertThat(tableUnion.left(), instanceOf(QueriedSelectRelation.class));
         assertThat(tableUnion.right(), instanceOf(QueriedSelectRelation.class));
         assertThat(tableUnion, isSQL("SELECT doc.users.id, doc.users.text"));
@@ -74,7 +74,7 @@ public class UnionAnalyzerTest extends CrateDummyClusterServiceUnitTest {
 
     @Test
     public void testUnion3Tables() {
-        QueriedSelectRelation<UnionSelect> relation = analyze(
+        QueriedSelectRelation relation = analyze(
             "select id, text from users u1 " +
             "union all " +
             "select id, name from users_multi_pk " +
@@ -87,7 +87,7 @@ public class UnionAnalyzerTest extends CrateDummyClusterServiceUnitTest {
         assertThat(relation.limit(), isLiteral(10L));
         assertThat(relation.offset(), isLiteral(20L));
 
-        UnionSelect tableUnion1 = relation.subRelation();
+        UnionSelect tableUnion1 = ((UnionSelect) relation.from().get(0));
         assertThat(tableUnion1.left(), instanceOf(UnionSelect.class));
         assertThat(tableUnion1.right(), instanceOf(QueriedSelectRelation.class));
         assertThat(tableUnion1, isSQL("SELECT u1.id, u1.text"));

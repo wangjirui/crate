@@ -23,7 +23,6 @@
 package io.crate.analyze;
 
 import com.google.common.base.MoreObjects;
-import io.crate.analyze.relations.AbstractTableRelation;
 import io.crate.execution.dsl.projection.WriterProjection;
 import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.ColumnIdent;
@@ -34,7 +33,7 @@ import java.util.Map;
 
 public class BoundCopyTo {
 
-    private final QueriedSelectRelation<? extends AbstractTableRelation<?>> relation;
+    private final QueriedSelectRelation relation;
     private final Symbol uri;
     private final boolean columnsDefined;
     @Nullable
@@ -49,7 +48,7 @@ public class BoundCopyTo {
      */
     private final Map<ColumnIdent, Symbol> overwrites;
 
-    public BoundCopyTo(QueriedSelectRelation<? extends AbstractTableRelation<?>> relation,
+    public BoundCopyTo(QueriedSelectRelation relation,
                        Symbol uri,
                        @Nullable WriterProjection.CompressionType compressionType,
                        @Nullable WriterProjection.OutputFormat outputFormat,
@@ -65,7 +64,7 @@ public class BoundCopyTo {
         this.overwrites = MoreObjects.firstNonNull(overwrites, Map.of());
     }
 
-    public QueriedSelectRelation<? extends AbstractTableRelation<?>> relation() {
+    public QueriedSelectRelation relation() {
         return relation;
     }
 

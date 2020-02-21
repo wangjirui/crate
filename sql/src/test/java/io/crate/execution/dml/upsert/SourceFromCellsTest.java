@@ -71,14 +71,14 @@ public class SourceFromCellsTest extends CrateDummyClusterServiceUnitTest {
             .addTable("create table t5 (obj object as (x int default 0, y int))")
             .addTable("create table t6 (x int default 1, y as x + 1)")
             .build();
-        QueriedSelectRelation<DocTableRelation> relation = e.analyze("select x, y, z from t1");
-        t1 = relation.subRelation().tableInfo();
+        QueriedSelectRelation relation = e.analyze("select x, y, z from t1");
+        t1 = ((DocTableRelation) relation.from().get(0)).tableInfo();
         x = (Reference) relation.outputs().get(0);
         y = (Reference) relation.outputs().get(1);
         z = (Reference) relation.outputs().get(2);
 
         relation = e.analyze("select obj, b from t2");
-        t2 = relation.subRelation().tableInfo();
+        t2 = ((DocTableRelation) relation.from().get(0)).tableInfo();
         obj = (Reference) relation.outputs().get(0);
     }
 
@@ -113,8 +113,8 @@ public class SourceFromCellsTest extends CrateDummyClusterServiceUnitTest {
 
     @Test
     public void testNullConstraintCheckCausesErrorIfRequiredPartitionedColumnValueIsNull() throws IOException {
-        QueriedSelectRelation<DocTableRelation> relation = e.analyze("select p from t3");
-        DocTableInfo t3 = relation.subRelation().tableInfo();
+        QueriedSelectRelation relation = e.analyze("select p from t3");
+        DocTableInfo t3 = ((DocTableRelation) relation.from().get(0)).tableInfo();
         PartitionName partitionName = new PartitionName(t3.ident(), singletonList(null));
 
         InsertSourceFromCells sourceFromCells = new InsertSourceFromCells(
@@ -126,8 +126,8 @@ public class SourceFromCellsTest extends CrateDummyClusterServiceUnitTest {
 
     @Test
     public void testNullConstraintCheckPassesIfRequiredPartitionedColumnValueIsNotNull() throws IOException {
-        QueriedSelectRelation<DocTableRelation> relation = e.analyze("select p from t3");
-        DocTableInfo t3 = relation.subRelation().tableInfo();
+        QueriedSelectRelation relation = e.analyze("select p from t3");
+        DocTableInfo t3 = ((DocTableRelation) relation.from().get(0)).tableInfo();
         PartitionName partitionName = new PartitionName(t3.ident(), singletonList("10"));
 
         InsertSourceFromCells sourceFromCells = new InsertSourceFromCells(
@@ -139,8 +139,8 @@ public class SourceFromCellsTest extends CrateDummyClusterServiceUnitTest {
 
     @Test
     public void testDefaultExpressionIsInjected() throws IOException {
-        QueriedSelectRelation<DocTableRelation> relation = e.analyze("select x from t4");
-        DocTableInfo t4 = relation.subRelation().tableInfo();
+        QueriedSelectRelation relation = e.analyze("select x from t4");
+        DocTableInfo t4 = ((DocTableRelation) relation.from().get(0)).tableInfo();
         Reference x = (Reference) relation.outputs().get(0);
 
         InsertSourceFromCells sourceFromCells = new InsertSourceFromCells(
@@ -153,8 +153,8 @@ public class SourceFromCellsTest extends CrateDummyClusterServiceUnitTest {
 
     @Test
     public void testDefaultExpressionGivenValueOverridesDefaultValue() throws IOException {
-        QueriedSelectRelation<DocTableRelation> relation = e.analyze("select x, y from t4");
-        DocTableInfo t4 = relation.subRelation().tableInfo();
+        QueriedSelectRelation relation = e.analyze("select x, y from t4");
+        DocTableInfo t4 = ((DocTableRelation) relation.from().get(0)).tableInfo();
         Reference x = (Reference) relation.outputs().get(0);
         Reference y = (Reference) relation.outputs().get(1);
 
