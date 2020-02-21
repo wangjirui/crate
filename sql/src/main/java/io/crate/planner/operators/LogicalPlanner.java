@@ -341,12 +341,11 @@ public class LogicalPlanner {
         public LogicalPlan visitQueriedSelectRelation(QueriedSelectRelation relation, PlanBuilderContext context) {
             SplitPoints splitPoints = SplitPointsBuilder.create(relation);
             var newCtx = new PlanBuilderContext(splitPoints.toCollect(), relation.where());
-            List<AnalyzedRelation> from = relation.from();
-            AnalyzedRelation sourceRelation = from.get(0);
-            LogicalPlan source = sourceRelation.accept(this, newCtx);
-            if (from.size() > 1) {
-                throw new UnsupportedOperationException("TODO: use joinBuilder");
-            }
+            LogicalPlan source = JoinPlanBuilder.buildJoinTree(
+                relation.from(),
+                relation.joinPairs(),
+                rel -> rel.accept(this, newCtx)
+            );
             HavingClause having = relation.having();
             return
                 Eval.create(

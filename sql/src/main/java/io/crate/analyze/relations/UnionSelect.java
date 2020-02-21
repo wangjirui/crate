@@ -29,6 +29,7 @@ import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.Symbols;
 import io.crate.sql.tree.QualifiedName;
+import org.elasticsearch.common.UUIDs;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -45,7 +46,7 @@ public class UnionSelect implements AnalyzedRelation {
     public UnionSelect(AnalyzedRelation left, AnalyzedRelation right) {
         this.left = left;
         this.right = right;
-        this.name = left.getQualifiedName();
+        this.name = new QualifiedName(UUIDs.randomBase64UUID());
 
         List<Symbol> fieldsFromLeft = left.outputs();
         ArrayList<Symbol> outputs = new ArrayList<>(fieldsFromLeft.size());

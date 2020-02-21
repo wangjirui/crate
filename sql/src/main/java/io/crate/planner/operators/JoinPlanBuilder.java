@@ -38,9 +38,11 @@ import org.elasticsearch.common.util.set.Sets;
 
 import javax.annotation.Nullable;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 /**
@@ -52,6 +54,15 @@ import java.util.stream.Stream;
  * application is mandated by {@link EquiJoinDetector}).
  */
 public class JoinPlanBuilder {
+
+    static LogicalPlan buildJoinTree(List<AnalyzedRelation> from,
+                                     List<JoinPair> joinPairs,
+                                     Function<AnalyzedRelation, LogicalPlan> plan) {
+        if (from.size() == 1) {
+            return plan.apply(from.get(0));
+        }
+        throw new UnsupportedOperationException("NYI");
+    }
 
     /*
     static LogicalPlan createNodes(MultiSourceSelect mss,
