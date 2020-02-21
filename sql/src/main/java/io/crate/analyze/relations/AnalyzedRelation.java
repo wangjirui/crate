@@ -23,9 +23,6 @@ package io.crate.analyze.relations;
 
 import io.crate.analyze.AnalyzedStatement;
 import io.crate.analyze.AnalyzedStatementVisitor;
-import io.crate.analyze.HavingClause;
-import io.crate.analyze.OrderBy;
-import io.crate.analyze.WhereClause;
 import io.crate.common.collections.Lists2;
 import io.crate.exceptions.AmbiguousColumnException;
 import io.crate.exceptions.ColumnUnknownException;
@@ -41,7 +38,6 @@ import io.crate.types.DataType;
 import io.crate.types.ObjectType;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -100,35 +96,6 @@ public interface AnalyzedRelation extends AnalyzedStatement {
     List<Symbol> outputs();
 
     /**
-     * @return WHERE clause of the relation.
-     *         This is {@link WhereClause#MATCH_ALL} if there was no WhereClause in the statement
-     */
-    WhereClause where();
-
-    /**
-     * @return The GROUP BY keys. Empty if there are none.
-     */
-    List<Symbol> groupBy();
-
-    /**
-     * @return The HAVING clause or null
-     */
-    @Nullable
-    HavingClause having();
-
-    /**
-     * @return ORDER BY clause or null if not present
-     */
-    @Nullable
-    OrderBy orderBy();
-
-    @Nullable
-    Symbol limit();
-
-    @Nullable
-    Symbol offset();
-
-    /**
      * Calls the consumer for each top-level symbol in the relation
      * (Arguments/children of function symbols are not visited)
      */
@@ -136,26 +103,6 @@ public interface AnalyzedRelation extends AnalyzedStatement {
     default void visitSymbols(Consumer<? super Symbol> consumer) {
         for (Symbol output : outputs()) {
             consumer.accept(output);
-        }
-        where().accept(consumer);
-        for (Symbol groupKey : groupBy()) {
-            consumer.accept(groupKey);
-        }
-        HavingClause having = having();
-        if (having != null) {
-            having.accept(consumer);
-        }
-        OrderBy orderBy = orderBy();
-        if (orderBy != null) {
-            orderBy.accept(consumer);
-        }
-        Symbol limit = limit();
-        if (limit != null) {
-            consumer.accept(limit);
-        }
-        Symbol offset = offset();
-        if (offset != null) {
-            consumer.accept(offset);
         }
     }
 
@@ -168,6 +115,4 @@ public interface AnalyzedRelation extends AnalyzedStatement {
     default boolean isWriteOperation() {
         return false;
     }
-
-    boolean isDistinct();
 }

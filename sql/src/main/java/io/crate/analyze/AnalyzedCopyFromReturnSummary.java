@@ -35,7 +35,6 @@ import io.crate.types.DataTypes;
 import io.crate.types.ObjectType;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.util.Arrays;
 import java.util.List;
 
@@ -77,44 +76,5 @@ public class AnalyzedCopyFromReturnSummary extends AnalyzedCopyFrom implements A
     @Override
     public List<Symbol> outputs() {
         return List.copyOf(fields);
-    }
-
-    @Override
-    public WhereClause where() {
-        return WhereClause.MATCH_ALL;
-    }
-
-    @Override
-    public List<Symbol> groupBy() {
-        return List.of();
-    }
-
-    @Nullable
-    @Override
-    public HavingClause having() {
-        return null;
-    }
-
-    @Nullable
-    @Override
-    public OrderBy orderBy() {
-        return null;
-    }
-
-    @Nullable
-    @Override
-    public Symbol limit() {
-        return null;
-    }
-
-    @Nullable
-    @Override
-    public Symbol offset() {
-        return null;
-    }
-
-    @Override
-    public boolean isDistinct() {
-        return false;
     }
 }

@@ -31,7 +31,6 @@ import io.crate.sql.tree.QualifiedName;
 import io.crate.types.DataTypes;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.util.Collections;
 import java.util.List;
 
@@ -76,44 +75,5 @@ public class AnalyzedShowCreateTable implements AnalyzedStatement, AnalyzedRelat
     @Override
     public List<Symbol> outputs() {
         return List.copyOf(fields);
-    }
-
-    @Override
-    public WhereClause where() {
-        return WhereClause.MATCH_ALL;
-    }
-
-    @Override
-    public List<Symbol> groupBy() {
-        return List.of();
-    }
-
-    @Nullable
-    @Override
-    public HavingClause having() {
-        return null;
-    }
-
-    @Nullable
-    @Override
-    public OrderBy orderBy() {
-        return null;
-    }
-
-    @Nullable
-    @Override
-    public Symbol limit() {
-        return null;
-    }
-
-    @Nullable
-    @Override
-    public Symbol offset() {
-        return null;
-    }
-
-    @Override
-    public boolean isDistinct() {
-        return false;
     }
 }

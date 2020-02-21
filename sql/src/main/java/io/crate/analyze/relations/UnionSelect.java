@@ -22,9 +22,6 @@
 
 package io.crate.analyze.relations;
 
-import io.crate.analyze.HavingClause;
-import io.crate.analyze.OrderBy;
-import io.crate.analyze.WhereClause;
 import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.Symbols;
@@ -32,7 +29,6 @@ import io.crate.sql.tree.QualifiedName;
 import org.elasticsearch.common.UUIDs;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -83,45 +79,6 @@ public class UnionSelect implements AnalyzedRelation {
     @Override
     public List<Symbol> outputs() {
         return outputs;
-    }
-
-    @Override
-    public WhereClause where() {
-        return WhereClause.MATCH_ALL;
-    }
-
-    @Override
-    public List<Symbol> groupBy() {
-        return List.of();
-    }
-
-    @Nullable
-    @Override
-    public HavingClause having() {
-        return null;
-    }
-
-    @Nullable
-    @Override
-    public OrderBy orderBy() {
-        return null;
-    }
-
-    @Nullable
-    @Override
-    public Symbol limit() {
-        return null;
-    }
-
-    @Nullable
-    @Override
-    public Symbol offset() {
-        return null;
-    }
-
-    @Override
-    public boolean isDistinct() {
-        return false;
     }
 
     @Override

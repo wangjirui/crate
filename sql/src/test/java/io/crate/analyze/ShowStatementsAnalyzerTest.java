@@ -53,7 +53,7 @@ public class ShowStatementsAnalyzerTest extends CrateDummyClusterServiceUnitTest
 
     @Test
     public void testVisitShowTablesSchema() throws Exception {
-        AnalyzedRelation relation = analyze("show tables in QNAME");
+        QueriedSelectRelation relation = analyze("show tables in QNAME");
 
         assertThat(relation.isDistinct(), is(true));
         assertThat(relation, isSQL(
@@ -72,7 +72,7 @@ public class ShowStatementsAnalyzerTest extends CrateDummyClusterServiceUnitTest
 
     @Test
     public void testVisitShowTablesLike() throws Exception {
-        AnalyzedRelation relation = analyze("show tables in QNAME like 'likePattern'");
+        QueriedSelectRelation relation = analyze("show tables in QNAME like 'likePattern'");
 
         assertThat(relation.isDistinct(), is(true));
         assertThat(relation, isSQL(
@@ -93,7 +93,7 @@ public class ShowStatementsAnalyzerTest extends CrateDummyClusterServiceUnitTest
 
     @Test
     public void testVisitShowTablesWhere() throws Exception {
-        AnalyzedRelation relation =
+        QueriedSelectRelation relation =
             analyze("show tables in QNAME where table_name = 'foo' or table_name like '%bar%'");
         assertThat(relation.isDistinct(), is(true));
         assertThat(relation.outputs(), contains(

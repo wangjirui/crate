@@ -22,9 +22,6 @@
 
 package io.crate.analyze.relations;
 
-import io.crate.analyze.HavingClause;
-import io.crate.analyze.OrderBy;
-import io.crate.analyze.WhereClause;
 import io.crate.expression.symbol.Function;
 import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
@@ -99,40 +96,6 @@ public class TableFunctionRelation implements AnalyzedRelation, FieldResolver {
     }
 
     @Override
-    public WhereClause where() {
-        return WhereClause.MATCH_ALL;
-    }
-
-    @Override
-    public List<Symbol> groupBy() {
-        return List.of();
-    }
-
-    @Nullable
-    @Override
-    public HavingClause having() {
-        return null;
-    }
-
-    @Nullable
-    @Override
-    public OrderBy orderBy() {
-        return null;
-    }
-
-    @Nullable
-    @Override
-    public Symbol limit() {
-        return null;
-    }
-
-    @Nullable
-    @Override
-    public Symbol offset() {
-        return null;
-    }
-
-    @Override
     public void visitSymbols(Consumer<? super Symbol> consumer) {
         for (Symbol output : outputs) {
             consumer.accept(output);
@@ -140,11 +103,6 @@ public class TableFunctionRelation implements AnalyzedRelation, FieldResolver {
         for (Symbol argument : function.arguments()) {
             consumer.accept(argument);
         }
-    }
-
-    @Override
-    public boolean isDistinct() {
-        return false;
     }
 
     @Nullable

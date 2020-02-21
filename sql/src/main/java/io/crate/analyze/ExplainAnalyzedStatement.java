@@ -84,43 +84,4 @@ public class ExplainAnalyzedStatement implements AnalyzedStatement, AnalyzedRela
     public List<Symbol> outputs() {
         return outputs;
     }
-
-    @Override
-    public WhereClause where() {
-        return WhereClause.MATCH_ALL;
-    }
-
-    @Override
-    public List<Symbol> groupBy() {
-        return List.of();
-    }
-
-    @Nullable
-    @Override
-    public HavingClause having() {
-        return null;
-    }
-
-    @Nullable
-    @Override
-    public OrderBy orderBy() {
-        return null;
-    }
-
-    @Nullable
-    @Override
-    public Symbol limit() {
-        return null;
-    }
-
-    @Nullable
-    @Override
-    public Symbol offset() {
-        return null;
-    }
-
-    @Override
-    public boolean isDistinct() {
-        return false;
-    }
 }

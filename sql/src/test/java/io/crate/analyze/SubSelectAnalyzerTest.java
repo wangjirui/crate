@@ -186,13 +186,13 @@ public class SubSelectAnalyzerTest extends CrateDummyClusterServiceUnitTest {
         assertThat(relation.joinPairs().get(0).condition(), isFunction("op_=", isField("i"), isField("i")));
 
         AliasedAnalyzedRelation t1Alias = (AliasedAnalyzedRelation) relation.from().get(1);
-        AnalyzedRelation t1Sub = t1Alias.relation();
+        QueriedSelectRelation t1Sub = ((QueriedSelectRelation) t1Alias.relation());
         assertThat(t1Sub.outputs(), contains(isField("a"), isField("i")));
         assertThat(t1Sub.orderBy().orderBySymbols(), contains(isField("a")));
         assertThat(t1Sub.limit(), isLiteral(10L));
 
-        AliasedAnalyzedRelation t1NestedAlias = (AliasedAnalyzedRelation) ((QueriedSelectRelation) t1Sub).from().get(0);
-        AnalyzedRelation t1 = t1NestedAlias.relation();
+        AliasedAnalyzedRelation t1NestedAlias = (AliasedAnalyzedRelation) t1Sub.from().get(0);
+        QueriedSelectRelation t1 = ((QueriedSelectRelation) t1NestedAlias.relation());
         assertThat(t1.orderBy().orderBySymbols(), contains(isReference("a")));
         assertThat(t1.limit(), isLiteral(5L));
 
@@ -214,12 +214,12 @@ public class SubSelectAnalyzerTest extends CrateDummyClusterServiceUnitTest {
         assertThat(relation.limit(), isLiteral(10L));
 
         AliasedAnalyzedRelation t1Alias = (AliasedAnalyzedRelation) relation.from().get(0);
-        AnalyzedRelation t1 = t1Alias.relation();
+        QueriedSelectRelation t1 = ((QueriedSelectRelation) t1Alias.relation());
         assertThat(t1.where().queryOrFallback(), isSQL("true"));
         assertThat(t1.orderBy(), isSQL("doc.t1.a"));
 
         AliasedAnalyzedRelation t2Alias = (AliasedAnalyzedRelation) relation.from().get(1);
-        AnalyzedRelation t2 = t2Alias.relation();
+        QueriedSelectRelation t2 = ((QueriedSelectRelation) t2Alias.relation());
         assertThat(t2.where().query(), isFunction("op_>", isReference("b"), isLiteral("10")));
         assertThat(t2.orderBy(), Matchers.nullValue());
     }

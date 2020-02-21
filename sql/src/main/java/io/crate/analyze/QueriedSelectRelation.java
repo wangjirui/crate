@@ -33,6 +33,7 @@ import io.crate.sql.tree.QualifiedName;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.List;
+import java.util.function.Consumer;
 
 public class QueriedSelectRelation implements AnalyzedRelation {
 
@@ -56,7 +57,6 @@ public class QueriedSelectRelation implements AnalyzedRelation {
         return from;
     }
 
-    @Override
     public boolean isDistinct() {
         return isDistinct;
     }
@@ -78,36 +78,30 @@ public class QueriedSelectRelation implements AnalyzedRelation {
         return querySpec.outputs();
     }
 
-    @Override
     public WhereClause where() {
         return querySpec.where();
     }
 
-    @Override
     public List<Symbol> groupBy() {
         return querySpec.groupBy();
     }
 
     @Nullable
-    @Override
     public HavingClause having() {
         return querySpec.having();
     }
 
     @Nullable
-    @Override
     public OrderBy orderBy() {
         return querySpec.orderBy();
     }
 
     @Nullable
-    @Override
     public Symbol limit() {
         return querySpec.limit();
     }
 
     @Nullable
-    @Override
     public Symbol offset() {
         return querySpec.offset();
     }
@@ -119,6 +113,33 @@ public class QueriedSelectRelation implements AnalyzedRelation {
                + " FROM ("
                + Lists2.joinOn(", ", from, x -> x.getQualifiedName().toString())
                + ')';
+    }
+
+    @Override
+    public void visitSymbols(Consumer<? super Symbol> consumer) {
+        for (Symbol output : outputs()) {
+            consumer.accept(output);
+        }
+        where().accept(consumer);
+        for (Symbol groupKey : groupBy()) {
+            consumer.accept(groupKey);
+        }
+        HavingClause having = having();
+        if (having != null) {
+            having.accept(consumer);
+        }
+        OrderBy orderBy = orderBy();
+        if (orderBy != null) {
+            orderBy.accept(consumer);
+        }
+        Symbol limit = limit();
+        if (limit != null) {
+            consumer.accept(limit);
+        }
+        Symbol offset = offset();
+        if (offset != null) {
+            consumer.accept(offset);
+        }
     }
 
     public List<JoinPair> joinPairs() {

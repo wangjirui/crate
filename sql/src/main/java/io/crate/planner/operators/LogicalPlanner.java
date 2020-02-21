@@ -26,7 +26,6 @@ import io.crate.analyze.AnalyzedInsertStatement;
 import io.crate.analyze.AnalyzedStatement;
 import io.crate.analyze.AnalyzedStatementVisitor;
 import io.crate.analyze.HavingClause;
-import io.crate.analyze.OrderBy;
 import io.crate.analyze.QueriedSelectRelation;
 import io.crate.analyze.WhereClause;
 import io.crate.analyze.relations.AliasedAnalyzedRelation;
@@ -81,7 +80,6 @@ import io.crate.planner.optimizer.rule.RewriteCollectToGet;
 import io.crate.planner.optimizer.rule.RewriteFilterOnOuterJoinToInnerJoin;
 import io.crate.planner.optimizer.rule.RewriteGroupByKeysLimitToTopNDistinct;
 import io.crate.statistics.TableStats;
-import io.crate.types.DataTypes;
 import org.elasticsearch.Version;
 
 import java.util.Collection;
@@ -157,9 +155,7 @@ public class LogicalPlanner {
             // The subquery must return at most 1 row, if more than 1 row is returned semantics require us to throw an error.
             // So we limit the query to 2 if there is no limit to avoid retrieval of many rows while being able to validate max1row
             fetchSize = 2;
-            maybeApplySoftLimit = relation.limit() == null
-                ? plan -> new Limit(plan, Literal.of(2L), Literal.of(0L))
-                : plan -> plan;
+            maybeApplySoftLimit = plan -> new Limit(plan, Literal.of(2L), Literal.of(0L));
         } else {
             fetchSize = 0;
             maybeApplySoftLimit = plan -> plan;
@@ -186,6 +182,8 @@ public class LogicalPlanner {
     // See issue https://github.com/crate/crate/issues/6755
     // If the output values are already sorted (even in desc order) no optimization is needed
     private LogicalPlan tryOptimizeForInSubquery(SelectSymbol selectSymbol, AnalyzedRelation relation, LogicalPlan planBuilder) {
+        // TODO: re-add optimization
+        /*
         if (selectSymbol.getResultType() == SelectSymbol.ResultType.SINGLE_COLUMN_MULTIPLE_VALUES) {
             OrderBy relationOrderBy = relation.orderBy();
             Symbol firstOutput = relation.outputs().get(0);
@@ -194,6 +192,7 @@ public class LogicalPlanner {
                 return Order.create(planBuilder, new OrderBy(Collections.singletonList(firstOutput)));
             }
         }
+         */
         return planBuilder;
     }
 
@@ -331,8 +330,8 @@ public class LogicalPlanner {
             var lhsRel = union.left();
             var rhsRel = union.right();
             return new Union(
-                lhsRel.accept(this, new PlanBuilderContext(lhsRel.outputs(), lhsRel.where())),
-                rhsRel.accept(this, new PlanBuilderContext(rhsRel.outputs(), rhsRel.where())),
+                lhsRel.accept(this, new PlanBuilderContext(lhsRel.outputs(), WhereClause.MATCH_ALL)),
+                rhsRel.accept(this, new PlanBuilderContext(rhsRel.outputs(), WhereClause.MATCH_ALL)),
                 union.outputs()
             );
         }
