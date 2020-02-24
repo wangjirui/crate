@@ -167,7 +167,6 @@ public class JoinIntegrationTest extends SQLTransportIntegrationTest {
     }
 
     @Test
-    @UseJdbc(0)
     public void testCrossJoinWithFunction() throws Exception {
         execute("create table t1 (price float)");
         execute("create table t2 (price float)");

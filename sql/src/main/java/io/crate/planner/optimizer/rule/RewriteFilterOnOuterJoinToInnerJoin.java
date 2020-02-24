@@ -28,6 +28,7 @@ import io.crate.expression.eval.EvaluatingNormalizer;
 import io.crate.expression.operator.AndOperator;
 import io.crate.expression.symbol.FieldReplacer;
 import io.crate.expression.symbol.Literal;
+import io.crate.expression.symbol.RefReplacer;
 import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.Functions;
 import io.crate.metadata.RelationName;
@@ -268,6 +269,12 @@ public final class RewriteFilterOnOuterJoinToInnerJoin implements Rule<Filter> {
             return false;
         }
         return WhereClause.canMatch(
-            normalizer.normalize(FieldReplacer.replaceFields(query, ignored -> Literal.NULL), null));
+            normalizer.normalize(
+                RefReplacer.replaceRefs(
+                    FieldReplacer.replaceFields(query, ignored -> Literal.NULL),
+                    ignored -> Literal.NULL
+                ),
+                null)
+        );
     }
 }

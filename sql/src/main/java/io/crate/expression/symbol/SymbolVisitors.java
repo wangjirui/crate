@@ -83,6 +83,14 @@ public class SymbolVisitors {
         }
 
         @Override
+        public Boolean visitAlias(AliasSymbol aliasSymbol, Predicate<? super Symbol> predicate) {
+            if (predicate.test(aliasSymbol)) {
+                return true;
+            }
+            return predicate.test(aliasSymbol.symbol());
+        }
+
+        @Override
         protected Boolean visitSymbol(Symbol symbol, Predicate<? super Symbol> symbolPredicate) {
             return symbolPredicate.test(symbol);
         }
