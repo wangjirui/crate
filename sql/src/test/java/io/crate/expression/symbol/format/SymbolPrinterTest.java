@@ -26,9 +26,9 @@ import io.crate.analyze.relations.AnalyzedRelation;
 import io.crate.analyze.relations.TableRelation;
 import io.crate.expression.symbol.Aggregation;
 import io.crate.expression.symbol.DynamicReference;
+import io.crate.expression.symbol.FetchReference;
 import io.crate.expression.symbol.InputColumn;
 import io.crate.expression.symbol.Literal;
-import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.FunctionIdent;
@@ -52,6 +52,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static io.crate.testing.SymbolMatchers.isReference;
 import static org.hamcrest.Matchers.is;
 
 public class SymbolPrinterTest extends CrateDummyClusterServiceUnitTest {
@@ -320,13 +321,10 @@ public class SymbolPrinterTest extends CrateDummyClusterServiceUnitTest {
 
     @Test
     public void testPrintFetchRefs() throws Exception {
-        ScopedSymbol field = (ScopedSymbol) sqlExpressions.asSymbol("bar");
-        fail("todo");
-        /*
-        Reference reference = ((AbstractTableRelation) field.relation()).resolveField(field);
-        Symbol fetchRef = new FetchReference(new InputColumn(1,reference. valueType()), reference);
-        assertPrint(fetchRef, "FETCH(INPUT(1), doc.formatter.bar)");
-        */
+        Symbol field = sqlExpressions.asSymbol("bar");
+        assertThat(field, isReference("bar"));
+        FetchReference fetchRef = new FetchReference(new InputColumn(0, field.valueType()), ((Reference) field));
+        assertPrint(fetchRef, "FETCH(INPUT(0), doc.formatter.bar)");
     }
 
     @Test

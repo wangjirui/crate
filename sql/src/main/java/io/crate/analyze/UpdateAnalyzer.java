@@ -35,7 +35,9 @@ import io.crate.analyze.relations.StatementAnalysisContext;
 import io.crate.analyze.relations.select.SelectAnalysis;
 import io.crate.analyze.relations.select.SelectAnalyzer;
 import io.crate.common.collections.Lists2;
+import io.crate.exceptions.ColumnUnknownException;
 import io.crate.expression.eval.EvaluatingNormalizer;
+import io.crate.expression.symbol.Function;
 import io.crate.expression.symbol.Literal;
 import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.ColumnIdent;
@@ -45,6 +47,7 @@ import io.crate.metadata.Reference;
 import io.crate.metadata.RowGranularity;
 import io.crate.metadata.table.Operation;
 import io.crate.metadata.table.TableInfo;
+import io.crate.sql.ExpressionFormatter;
 import io.crate.sql.tree.Assignment;
 import io.crate.sql.tree.AstVisitor;
 import io.crate.sql.tree.Expression;
@@ -167,6 +170,9 @@ public final class UpdateAnalyzer {
             AssignmentNameValidator.ensureNoArrayElementUpdate(assignment.columnName());
 
             Symbol target = normalizer.normalize(targetExprAnalyzer.convert(assignment.columnName(), exprCtx), txnCtx);
+            if (target instanceof Function) {
+                throw new ColumnUnknownException(ExpressionFormatter.formatExpression(assignment.columnName()), tableInfo.ident());
+            }
             assert target instanceof Reference : "AstBuilder restricts left side of assignments to Columns/Subscripts";
             Reference targetCol = (Reference) target;
             if (hasMatchingParent(tableInfo, targetCol, IS_OBJECT_ARRAY)) {

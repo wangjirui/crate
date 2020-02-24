@@ -151,7 +151,7 @@ public final class GroupAndAggregateSemantics {
 
         @Override
         public Symbol visitReference(Reference ref, List<Symbol> groupBy) {
-            if (groupBy.contains(ref)) {
+            if (containedIn(ref, groupBy)) {
                 return null;
             }
             return ref;
@@ -159,10 +159,26 @@ public final class GroupAndAggregateSemantics {
 
         @Override
         public Symbol visitField(ScopedSymbol symbol, List<Symbol> groupBy) {
-            if (groupBy.contains(symbol)) {
+            if (containedIn(symbol, groupBy)) {
                 return null;
             }
             return symbol;
+        }
+
+        public static boolean containedIn(Symbol symbol, List<Symbol> groupBy) {
+            // SELECT count(*), x AS xx, x FROM tbl GROUP BY 2
+            // GROUP BY is on `xx`, but `x` is implicitly also present in GROUP BY, so must be valid.
+            for (Symbol groupExpr : groupBy) {
+                if (symbol.equals(groupExpr)) {
+                    return true;
+                }
+                if (groupExpr instanceof AliasSymbol) {
+                    if (symbol.equals(((AliasSymbol) groupExpr).symbol())) {
+                        return true;
+                    }
+                }
+            }
+            return false;
         }
 
         @Override

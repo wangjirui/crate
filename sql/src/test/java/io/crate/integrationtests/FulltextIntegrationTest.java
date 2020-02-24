@@ -24,6 +24,7 @@ package io.crate.integrationtests;
 
 import io.crate.action.sql.SQLActionException;
 import io.crate.testing.TestingHelpers;
+import io.crate.testing.UseJdbc;
 import org.junit.Test;
 
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
@@ -47,6 +48,7 @@ public class FulltextIntegrationTest extends SQLTransportIntegrationTest  {
     }
 
     @Test
+    @UseJdbc(0)
     public void testSelectNotMatch() throws Exception {
         execute("create table quotes (quote string) with (number_of_replicas = 0)");
         ensureYellow();

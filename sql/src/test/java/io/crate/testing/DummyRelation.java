@@ -41,9 +41,17 @@ import java.util.Set;
 public class DummyRelation implements AnalyzedRelation {
 
     private final Set<ColumnIdent> columnReferences = new HashSet<>();
-    private RelationName name = new RelationName("foo", "dummy");
+    private final RelationName name;
+
+    public DummyRelation(RelationName name, String... referenceNames) {
+        this.name = name;
+        for (String referenceName : referenceNames) {
+            columnReferences.add(ColumnIdent.fromPath(referenceName));
+        }
+    }
 
     public DummyRelation(String... referenceNames) {
+        this.name = new RelationName("foo", "dummy");
         for (String referenceName : referenceNames) {
             columnReferences.add(ColumnIdent.fromPath(referenceName));
         }

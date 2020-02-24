@@ -76,7 +76,15 @@ public class SymbolMatchers {
     }
 
     public static Matcher<Symbol> isField(final String expectedName) {
-        return isField(expectedName, null);
+        return isField(expectedName, (DataType<?>) null);
+    }
+
+    public static Matcher<Symbol> isField(final String expectedName, RelationName relation) {
+        return allOf(
+            instanceOf(ScopedSymbol.class),
+            withFeature(x -> ((ScopedSymbol) x).column().sqlFqn(), "", equalTo(expectedName)),
+            withFeature(x -> ((ScopedSymbol) x).relation(), "", equalTo(relation))
+        );
     }
 
     public static Matcher<Symbol> isField(final String expectedName, @Nullable final DataType<?> dataType) {

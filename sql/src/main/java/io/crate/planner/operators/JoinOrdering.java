@@ -43,8 +43,8 @@ final class JoinOrdering {
     }
 
     static Collection<RelationName> getOrderedRelationNames(Collection<RelationName> sourceRelations,
-                                                             Set<? extends Set<RelationName>> explicitJoinConditions,
-                                                             Set<? extends Set<RelationName>> implicitJoinConditions) {
+                                                            Set<? extends Set<RelationName>> explicitJoinConditions,
+                                                            Set<? extends Set<RelationName>> implicitJoinConditions) {
         if (sourceRelations.size() == 2) {
             return sourceRelations;
         }

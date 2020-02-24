@@ -23,12 +23,12 @@
 package io.crate.planner.operators;
 
 import com.carrotsearch.hppc.ObjectIntHashMap;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import io.crate.metadata.RelationName;
 import io.crate.testing.T3;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Set;
@@ -47,13 +47,11 @@ public class JoinOrderingTest {
         occurrences.put(T3.T2, 1);
         occurrences.put(T3.T3, 3);
         occurrences.put(T3.T4, 1);
-        @SuppressWarnings("unchecked")
-        Set<Set<RelationName>> sets = Sets.newHashSet(
-            ImmutableSet.of(T3.T1, T3.T2),
-            ImmutableSet.of(T3.T2, T3.T3),
-            ImmutableSet.of(T3.T3, T3.T4)
-        );
-        assertThat(JoinOrdering.findAndRemoveFirstJoinPair(occurrences, sets), is(ImmutableSet.of(T3.T2, T3.T3)));
+        ArrayList<Set<RelationName>> joinPairs = new ArrayList<>();
+        joinPairs.add(Set.of(T3.T1, T3.T2));
+        joinPairs.add(Set.of(T3.T2, T3.T3));
+        joinPairs.add(Set.of(T3.T3, T3.T4));
+        assertThat(JoinOrdering.findAndRemoveFirstJoinPair(occurrences, joinPairs), is(Set.of(T3.T2, T3.T3)));
     }
 
     @Test

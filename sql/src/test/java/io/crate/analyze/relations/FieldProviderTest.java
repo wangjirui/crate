@@ -38,6 +38,8 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static io.crate.testing.SymbolMatchers.isField;
+
 public class FieldProviderTest extends CrateUnitTest {
 
     private AnalyzedRelation dummyRelation = new DummyRelation("name");
@@ -63,7 +65,7 @@ public class FieldProviderTest extends CrateUnitTest {
 
     @Test
     public void testInvalidSources() throws Exception {
-        expectedException.expect(UnsupportedOperationException.class);
+        expectedException.expectMessage("Table with more than 2 QualifiedName parts is not supported. Only <schema>.<tableName> works.");
         AnalyzedRelation relation = new DummyRelation("name");
         FieldProvider<Symbol> resolver = newFQFieldProvider(Map.of(newQN("too.many.parts"), relation));
         resolver.resolveField(newQN("name"), null, Operation.READ);
@@ -112,10 +114,10 @@ public class FieldProviderTest extends CrateUnitTest {
 
     @Test
     public void testMultipleSourcesWithDynamicReferenceAndReference() throws Exception {
-        AnalyzedRelation barT = new DummyRelation("name");
-        AnalyzedRelation fooT = new DummyRelation("name");
-        AnalyzedRelation fooA = new DummyRelation("name");
-        AnalyzedRelation customT = new DummyRelation("tags");
+        AnalyzedRelation barT = new DummyRelation(new RelationName("bar", "t"), "name");
+        AnalyzedRelation fooT = new DummyRelation(new RelationName("foo", "t"), "name");
+        AnalyzedRelation fooA = new DummyRelation(new RelationName("foo", "a"), "name");
+        AnalyzedRelation customT = new DummyRelation(new RelationName("custom", "t"), "tags");
 
         FieldProvider<Symbol> resolver = newFQFieldProvider(Map.of(
             newQN("bar.t"), barT,
@@ -123,31 +125,23 @@ public class FieldProviderTest extends CrateUnitTest {
             newQN("foo.a"), fooA,
             newQN("custom.t"), customT));
         Symbol field = resolver.resolveField(newQN("foo.t.name"), null, Operation.READ);
-        fail("TODO: update test");
-        /*
-        assertThat(field.relation(), equalTo(fooT));
+        assertThat(field, isField("name", fooT.relationName()));
 
-        // reference > dynamicReference - not ambiguous
-        Field tags = resolver.resolveField(newQN("tags"), null, Operation.READ);
-        assertThat(tags.relation(), equalTo(customT));
+        Symbol tags = resolver.resolveField(newQN("tags"), null, Operation.READ);
+        assertThat(tags, isField("tags", customT.relationName()));
 
         field = resolver.resolveField(newQN("a.name"), null, Operation.READ);
-        assertThat(field.relation(), equalTo(fooA));
-        */
+        assertThat(field, isField("name", fooA.relationName()));
     }
 
     @Test
     public void testRelationOutputFromAlias() throws Exception {
         // t.name from doc.foo t
-        AnalyzedRelation relation = new DummyRelation("name");
+        AnalyzedRelation relation = new DummyRelation(new RelationName("doc", "t"), "name");
         FieldProvider<Symbol> resolver = newFQFieldProvider(ImmutableMap.of(
             new QualifiedName(Arrays.asList("t")), relation));
         Symbol field = resolver.resolveField(newQN("t.name"), null, Operation.READ);
-        fail("update test");
-        /*
-        assertThat(field.relation(), equalTo(relation));
-        assertThat(field.path().sqlFqn(), is("name"));
-         */
+        assertThat(field, isField("name", relation.relationName()));
     }
 
     @Test
@@ -156,25 +150,17 @@ public class FieldProviderTest extends CrateUnitTest {
         AnalyzedRelation relation = new DummyRelation("name");
         FieldProvider<Symbol> resolver = newFQFieldProvider(ImmutableMap.of(newQN("doc.t"), relation));
         Symbol field = resolver.resolveField(newQN("name"), null, Operation.READ);
-        fail("update test");
-        /*
-        assertThat(field.relation(), equalTo(relation));
-        assertThat(field.path().sqlFqn(), is("name"));
-         */
+        assertThat(field, isField("name", relation.relationName()));
     }
 
     @Test
     public void testRelationOutputFromSchemaTableColumnName() throws Exception {
         // doc.t.name from t.name
 
-        AnalyzedRelation relation = new DummyRelation("name");
+        AnalyzedRelation relation = new DummyRelation(new RelationName("doc", "t"), "name");
         FieldProvider<Symbol> resolver = newFQFieldProvider(ImmutableMap.of(newQN("doc.t"), relation));
         Symbol field = resolver.resolveField(newQN("doc.t.name"), null, Operation.INSERT);
-        fail("update test");
-        /*
-        assertThat(field.relation(), equalTo(relation));
-        assertThat(field.path().sqlFqn(), is("name"));
-         */
+        assertThat(field, isField("name", relation.relationName()));
     }
 
     @Test
@@ -223,8 +209,7 @@ public class FieldProviderTest extends CrateUnitTest {
         AnalyzedRelation relation = new DummyRelation("name");
         FieldProvider<Symbol> resolver = new NameFieldProvider(relation);
         Symbol field = resolver.resolveField(new QualifiedName(Arrays.asList("name")), null, Operation.READ);
-        fail("update test");
-        //assertThat(field.relation(), equalTo(relation));
+        assertThat(field, isField("name", relation.relationName()));
     }
 
     @Test
@@ -238,12 +223,11 @@ public class FieldProviderTest extends CrateUnitTest {
 
     @Test
     public void testColumnSchemaResolver() throws Exception {
-        AnalyzedRelation barT = new DummyRelation("\"Name\"");
+        AnalyzedRelation barT = new DummyRelation(new RelationName("Foo", "Bar"), "\"Name\"");
 
         FieldProvider<Symbol> resolver = newFQFieldProvider(ImmutableMap.of(newQN("\"Foo\".\"Bar\""), barT));
         Symbol field = resolver.resolveField(newQN("\"Foo\".\"Bar\".\"Name\""), null, Operation.READ);
-        fail("update test");
-        //assertThat(field.relation(), equalTo(barT));
+        assertThat(field, isField("\"Name\"", barT.relationName()));
     }
 
     @Test
@@ -257,12 +241,11 @@ public class FieldProviderTest extends CrateUnitTest {
 
     @Test
     public void testAliasRelationNameResolver() throws Exception {
-        AnalyzedRelation barT = new DummyRelation("name");
+        AnalyzedRelation barT = new DummyRelation(new RelationName("doc", "Bar"), "name");
 
         FieldProvider<Symbol> resolver = newFQFieldProvider(ImmutableMap.of(newQN("\"Bar\""), barT));
         Symbol field = resolver.resolveField(newQN("\"Bar\".name"), null, Operation.READ);
-        fail("update test");
-        //assertThat(field.relation(), equalTo(barT));
+        assertThat(field, isField("name", barT.relationName()));
     }
 
     @Test

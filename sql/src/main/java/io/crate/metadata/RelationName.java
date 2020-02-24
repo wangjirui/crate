@@ -50,7 +50,7 @@ public final class RelationName implements Writeable {
     public static RelationName of(QualifiedName name, String defaultSchema) {
         List<String> parts = name.getParts();
         Preconditions.checkArgument(parts.size() < 3,
-            "Table with more then 2 QualifiedName parts is not supported. only <schema>.<tableName> works.");
+            "Table with more than 2 QualifiedName parts is not supported. Only <schema>.<tableName> works.");
         if (parts.size() == 2) {
             return new RelationName(parts.get(0), parts.get(1));
         }

@@ -26,6 +26,7 @@ import io.crate.analyze.relations.AnalyzedRelation;
 import io.crate.analyze.relations.AnalyzedRelationVisitor;
 import io.crate.analyze.relations.JoinPair;
 import io.crate.common.collections.Lists2;
+import io.crate.exceptions.AmbiguousColumnException;
 import io.crate.exceptions.ColumnUnknownException;
 import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.Symbols;
@@ -61,13 +62,32 @@ public class QueriedSelectRelation implements AnalyzedRelation {
     }
 
     public Symbol getField(ColumnIdent column, Operation operation) throws UnsupportedOperationException, ColumnUnknownException {
+        Symbol match = null;
+        // SELECT obj['x'] FROM (select...)
+        // This is to optimize `obj['x']` to a reference with path instead of building a subscript function.
         for (AnalyzedRelation analyzedRelation : from) {
             Symbol field = analyzedRelation.getField(column, operation);
             if (field != null) {
-                return field;
+                if (match != null) {
+                    throw new AmbiguousColumnException(column, field);
+                }
+                match = field;
             }
         }
-        return null;
+        // SELECT x AS xx, y FROM tbl1
+        // The logic above can't match `xx`; The alias is only available in the outputs
+        if (match == null) {
+            for (Symbol output : outputs()) {
+                ColumnIdent outputName = Symbols.pathFromSymbol(output);
+                if (outputName.equals(column)) {
+                    if (match != null) {
+                        throw new AmbiguousColumnException(column, output);
+                    }
+                    match = output;
+                }
+            }
+        }
+        return match;
     }
 
     public boolean isDistinct() {

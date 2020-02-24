@@ -22,7 +22,6 @@
 package io.crate.execution.dsl.projection.builder;
 
 import com.google.common.base.MoreObjects;
-
 import io.crate.expression.scalar.SubscriptObjectFunction;
 import io.crate.expression.symbol.Aggregation;
 import io.crate.expression.symbol.AliasSymbol;
@@ -84,17 +83,29 @@ public final class InputColumns extends DefaultTraversalSymbolVisitor<InputColum
                 // only non-literals should be replaced with input columns.
                 // otherwise {@link io.crate.metadata.Scalar#compile} won't do anything which
                 // results in poor performance of some scalar implementations
-                SymbolType symbolType = input.symbolType();
-                if (!symbolType.isValueSymbol()) {
-                    DataType<?> valueType = input.valueType();
-                    if ((symbolType == SymbolType.FUNCTION || symbolType == SymbolType.WINDOW_FUNCTION)
-                        && !((Function) input).info().isDeterministic()) {
-                        nonDeterministicFunctions.put(input, new InputColumn(i, valueType));
-                    } else {
-                        this.inputs.put(input, new InputColumn(i, valueType));
-                    }
+                add(i, input);
+
+                /* SELECT count(*), x AS xx, x GROUP by 2
+                 * GROUP operator would outputs: [x AS xx, count(*)]
+                 * Eval wouldn't find `x`
+                 */
+                if (input instanceof AliasSymbol) {
+                    add(i, ((AliasSymbol) input).symbol());
                 }
                 i++;
+            }
+        }
+
+        public void add(int i, Symbol input) {
+            SymbolType symbolType = input.symbolType();
+            if (!symbolType.isValueSymbol()) {
+                DataType<?> valueType = input.valueType();
+                if ((symbolType == SymbolType.FUNCTION || symbolType == SymbolType.WINDOW_FUNCTION)
+                    && !((Function) input).info().isDeterministic()) {
+                    nonDeterministicFunctions.put(input, new InputColumn(i, valueType));
+                } else {
+                    this.inputs.put(input, new InputColumn(i, valueType));
+                }
             }
         }
 
@@ -212,9 +223,9 @@ public final class InputColumns extends DefaultTraversalSymbolVisitor<InputColum
     public Symbol visitAlias(AliasSymbol aliasSymbol, SourceSymbols sourceSymbols) {
         InputColumn inputColumn = sourceSymbols.inputs.get(aliasSymbol);
         if (inputColumn == null) {
-            InputColumn column = sourceSymbols.inputs.get(aliasSymbol.symbol());
+            Symbol column = aliasSymbol.symbol().accept(this, sourceSymbols);
             if (column == null) {
-                throw new IllegalArgumentException("Couldn't find " + column + " in " + sourceSymbols);
+                throw new IllegalArgumentException("Couldn't find " + aliasSymbol + " in " + sourceSymbols);
             }
             return column;
         }
@@ -237,7 +248,7 @@ public final class InputColumns extends DefaultTraversalSymbolVisitor<InputColum
         if (inputColumn == null) {
             Symbol subscriptOnRoot = tryCreateSubscriptOnRoot(ref, ref.column(), sourceSymbols.inputs);
             if (subscriptOnRoot == null) {
-                throw new IllegalArgumentException("Couldn't find " + ref + " in " + sourceSymbols);
+                return ref;
             }
             return subscriptOnRoot;
         }

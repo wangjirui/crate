@@ -25,7 +25,7 @@ package io.crate.analyze;
 import io.crate.analyze.relations.AliasedAnalyzedRelation;
 import io.crate.analyze.relations.AnalyzedRelation;
 import io.crate.analyze.relations.DocTableRelation;
-import io.crate.exceptions.AmbiguousColumnAliasException;
+import io.crate.exceptions.AmbiguousColumnException;
 import io.crate.expression.symbol.SelectSymbol;
 import io.crate.metadata.RelationName;
 import io.crate.metadata.doc.DocTableInfo;
@@ -37,6 +37,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 
+import static io.crate.testing.RelationMatchers.isDocTable;
 import static io.crate.testing.SymbolMatchers.isAlias;
 import static io.crate.testing.SymbolMatchers.isField;
 import static io.crate.testing.SymbolMatchers.isFunction;
@@ -59,7 +60,7 @@ public class SubSelectAnalyzerTest extends CrateDummyClusterServiceUnitTest {
     }
 
     private <T extends AnalyzedRelation> T analyze(String stmt) {
-        return (T) executor.<AnalyzedRelation>analyze(stmt);
+        return executor.analyze(stmt);
     }
 
     @Test
@@ -94,15 +95,10 @@ public class SubSelectAnalyzerTest extends CrateDummyClusterServiceUnitTest {
             isField("aa"),
             isFunction("add", isField("xi"), isLiteral(1))
         ));
-        fail("TODO");
-        /*
-        QueriedSelectRelation innerRel =
-            (QueriedSelectRelation) relation.subRelation().relation();
+        QueriedSelectRelation innerQSR = (QueriedSelectRelation) ((AliasedAnalyzedRelation) relation.from().get(0)).relation();
         assertThat(
-            innerRel.subRelation().tableInfo(),
-            is(t1Info)
-        );
-         */
+            innerQSR.from(),
+            contains(isDocTable(new RelationName("doc", "t1"))));
     }
 
     @Test
@@ -128,8 +124,8 @@ public class SubSelectAnalyzerTest extends CrateDummyClusterServiceUnitTest {
 
     @Test
     public void testSubSelectWithJoinsAmbiguousColumn() throws Exception {
-        expectedException.expect(AmbiguousColumnAliasException.class);
-        expectedException.expectMessage("Column alias \"i\" is ambiguous");
+        expectedException.expect(AmbiguousColumnException.class);
+        expectedException.expectMessage("Column \"i\" is ambiguous");
         analyze("select aliased_sub.i, aliased_sub.b from (select t1.i, t2.i, t2.b from t1, t2) as aliased_sub");
     }
 
@@ -185,7 +181,7 @@ public class SubSelectAnalyzerTest extends CrateDummyClusterServiceUnitTest {
 
         assertThat(relation.joinPairs().get(0).condition(), isFunction("op_=", isField("i"), isField("i")));
 
-        AliasedAnalyzedRelation t1Alias = (AliasedAnalyzedRelation) relation.from().get(1);
+        AliasedAnalyzedRelation t1Alias = (AliasedAnalyzedRelation) relation.from().get(0);
         QueriedSelectRelation t1Sub = ((QueriedSelectRelation) t1Alias.relation());
         assertThat(t1Sub.outputs(), contains(isField("a"), isField("i")));
         assertThat(t1Sub.orderBy().orderBySymbols(), contains(isField("a")));

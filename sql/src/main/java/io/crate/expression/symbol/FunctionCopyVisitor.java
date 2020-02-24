@@ -24,7 +24,9 @@ package io.crate.expression.symbol;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static java.util.Objects.requireNonNull;
 
@@ -150,6 +152,24 @@ public abstract class FunctionCopyVisitor<C> extends SymbolVisitor<C, Symbol> {
             processedFunction.arguments(),
             processNullable(windowFunction.filter(), context),
             windowFunction.windowDefinition().map(s -> s.accept(this, context))
+        );
+    }
+
+    @Override
+    public Symbol visitMatchPredicate(MatchPredicate matchPredicate, C context) {
+        Symbol queryTerm = matchPredicate.queryTerm().accept(this, context);
+        HashMap<Symbol, Symbol> identBootMap = new HashMap<>();
+        for (Map.Entry<Symbol, Symbol> entry : matchPredicate.identBoostMap().entrySet()) {
+            identBootMap.put(
+                entry.getKey().accept(this, context),
+                entry.getValue().accept(this, context)
+            );
+        }
+        return new MatchPredicate(
+            identBootMap,
+            queryTerm,
+            matchPredicate.matchType(),
+            matchPredicate.options().accept(this, context)
         );
     }
 
