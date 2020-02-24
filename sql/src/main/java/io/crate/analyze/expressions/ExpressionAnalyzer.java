@@ -655,6 +655,13 @@ public class ExpressionAnalyzer {
                 Symbol index = node.index().accept(this, context);
                 return allocateFunction(SubscriptFunction.NAME, List.of(base, index), context);
             } else {
+                // Ideally the above base+index + subscriptFunction case would be enough
+                // But:
+                // - We want to avoid subscript functions if possible (we've nested object values in a column store)
+                // - In DDL statement we can't turn a `PRIMARY KEY o['x']` into a subscript either
+                // - In DML statements we can have assignments: obj['x'] = 30
+                // We should come up with a design that addresses those and remove the duct-tape logic below.
+
                 Symbol name;
                 try {
                     name = fieldProvider.resolveField(qualifiedName, parts, operation);
@@ -664,6 +671,9 @@ public class ExpressionAnalyzer {
                     }
                     try {
                         Symbol base = fieldProvider.resolveField(qualifiedName, List.of(), operation);
+                        if (base instanceof Reference) {
+                            throw e;
+                        }
                         return allocateFunction(
                             SubscriptFunction.NAME,
                             List.of(base, node.index().accept(this, context)),
