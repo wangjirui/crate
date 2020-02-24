@@ -108,7 +108,7 @@ public class JoinTest extends CrateDummyClusterServiceUnitTest {
             mss.where().queryOrFallback(),
             mss.joinPairs(),
             rel -> logicalPlanner.normalizeAndPlan(rel, plannerCtx, subqueryPlanner, Set.of()),
-            true
+            txnCtx.sessionContext().isHashJoinEnabled()
         );
     }
 
@@ -198,7 +198,7 @@ public class JoinTest extends CrateDummyClusterServiceUnitTest {
             mss.where().queryOrFallback(),
             mss.joinPairs(),
             rel -> logicalPlanner.normalizeAndPlan(rel, plannerCtx, subqueryPlanner, Set.of()),
-            true
+            false
         );
         Join nl = (Join) operator.build(
             context, projectionBuilder, -1, 0, null, null, Row.EMPTY, SubQueryResults.EMPTY);
@@ -451,13 +451,10 @@ public class JoinTest extends CrateDummyClusterServiceUnitTest {
         var logicalPlan = e.logicalPlan(statement);
         var expectedPlan =
             "RootBoundary[x, x]\n" +
-            "Boundary[x, x]\n" +
-            "Boundary[x, x]\n" +
+            "Rename[x, x] AS tjoin\n" +
             "NestedLoopJoin[\n" +
-            "    Boundary[x]\n" +
             "    Collect[doc.t1 | [x] | true]\n" +
             "    --- CROSS ---\n" +
-            "    Boundary[x]\n" +
             "    Collect[doc.t2 | [x] | true]\n" +
             "]\n";
         assertThat(logicalPlan, isPlan(e.functions(), expectedPlan));
@@ -493,11 +490,9 @@ public class JoinTest extends CrateDummyClusterServiceUnitTest {
             "RootBoundary[name]\n" +
             "Eval[name]\n" +
             "HashJoin[\n" +
-            "    Boundary[id, other_id, name, text, no_index, details, address, awesome, counters, friends, tags, bytes, shorts, date, shape, ints, floats, address['postcode']]\n" +
-            "    Collect[doc.users | [id, other_id, name, text, no_index, details, address, awesome, counters, friends, tags, bytes, shorts, date, shape, ints, floats, address['postcode']] | true]\n" +
+            "    Collect[doc.users | [name, address['postcode']] | true]\n" +
             "    --- INNER ---\n" +
-            "    Boundary[a, x, i]\n" +
-            "    Collect[doc.t1 | [a, x, i] | true]\n" +
+            "    Collect[doc.t1 | [a] | true]\n" +
             "]\n";
         assertThat(logicalPlan, is(isPlan(e.functions(), expectedPlan)));
 
@@ -509,12 +504,10 @@ public class JoinTest extends CrateDummyClusterServiceUnitTest {
             "RootBoundary[name]\n" +
             "Eval[name]\n" +
             "HashJoin[\n" +
-            "    Boundary[id, other_id, name, text, no_index, details, address, awesome, counters, friends, tags, bytes, shorts, date, shape, ints, floats, address['postcode']]\n" +
-            "    Boundary[id, other_id, name, text, no_index, details, address, awesome, counters, friends, tags, bytes, shorts, date, shape, ints, floats, address['postcode']]\n" +
-            "    Collect[doc.users | [id, other_id, name, text, no_index, details, address, awesome, counters, friends, tags, bytes, shorts, date, shape, ints, floats, address['postcode']] | true]\n" +
+            "    Rename[name, address] AS u\n" +
+            "    Collect[doc.users | [name, address] | true]\n" +
             "    --- INNER ---\n" +
-            "    Boundary[a, x, i]\n" +
-            "    Collect[doc.t1 | [a, x, i] | true]\n" +
+            "    Collect[doc.t1 | [a] | true]\n" +
             "]\n";
         assertThat(logicalPlan, is(isPlan(e.functions(), expectedPlan)));
     }

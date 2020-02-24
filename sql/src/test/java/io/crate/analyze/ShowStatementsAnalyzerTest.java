@@ -57,17 +57,18 @@ public class ShowStatementsAnalyzerTest extends CrateDummyClusterServiceUnitTest
 
         assertThat(relation.isDistinct(), is(true));
         assertThat(relation, isSQL(
-            "SELECT information_schema.tables.table_name " +
-            "WHERE ((information_schema.tables.table_type = 'BASE TABLE') AND (information_schema.tables.table_schema = 'qname')) " +
-            "ORDER BY information_schema.tables.table_name"));
+            "SELECT information_schema.tables.table_name AS table_name " +
+            "WHERE ((information_schema.tables.table_type = 'BASE TABLE') " +
+            "AND (information_schema.tables.table_schema = 'qname')) " +
+            "ORDER BY information_schema.tables.table_name AS table_name"));
 
         relation = analyze("show tables");
         assertThat(relation.isDistinct(), is(true));
         assertThat(relation, isSQL(
-            "SELECT information_schema.tables.table_name " +
+            "SELECT information_schema.tables.table_name AS table_name " +
             "WHERE ((information_schema.tables.table_type = 'BASE TABLE') " +
             "AND (NOT (information_schema.tables.table_schema = ANY(['information_schema', 'sys', 'pg_catalog'])))) " +
-            "ORDER BY information_schema.tables.table_name"));
+            "ORDER BY information_schema.tables.table_name AS table_name"));
     }
 
     @Test
@@ -76,19 +77,19 @@ public class ShowStatementsAnalyzerTest extends CrateDummyClusterServiceUnitTest
 
         assertThat(relation.isDistinct(), is(true));
         assertThat(relation, isSQL(
-            "SELECT information_schema.tables.table_name " +
+            "SELECT information_schema.tables.table_name AS table_name " +
             "WHERE (((information_schema.tables.table_type = 'BASE TABLE') AND (information_schema.tables.table_schema = 'qname')) " +
             "AND (information_schema.tables.table_name LIKE 'likePattern')) " +
-            "ORDER BY information_schema.tables.table_name"));
+            "ORDER BY information_schema.tables.table_name AS table_name"));
 
         relation = analyze("show tables like '%'");
         assertThat(relation.isDistinct(), is(true));
         assertThat(relation, isSQL(
-            "SELECT information_schema.tables.table_name " +
+            "SELECT information_schema.tables.table_name AS table_name " +
             "WHERE (((information_schema.tables.table_type = 'BASE TABLE') AND " +
             "(NOT (information_schema.tables.table_schema = ANY(['information_schema', 'sys', 'pg_catalog'])))) " +
             "AND (information_schema.tables.table_name LIKE '%')) " +
-            "ORDER BY information_schema.tables.table_name"));
+            "ORDER BY information_schema.tables.table_name AS table_name"));
     }
 
     @Test
@@ -109,22 +110,14 @@ public class ShowStatementsAnalyzerTest extends CrateDummyClusterServiceUnitTest
         );
         assertThat(relation.orderBy().orderBySymbols(), contains(isAlias("table_name", isReference("table_name"))));
 
-        /*
-            isSQL(
-            "SELECT information_schema.tables.table_name " +
-            "WHERE (((information_schema.tables.table_type = 'BASE TABLE') AND (information_schema.tables.table_schema = 'qname')) " +
-            "AND ((information_schema.tables.table_name = 'foo') OR (information_schema.tables.table_name LIKE '%bar%'))) " +
-            "ORDER BY information_schema.tables.table_name"));
-         */
-
         relation = analyze("show tables where table_name like '%'");
         assertThat(relation.isDistinct(), is(true));
         assertThat(relation, isSQL(
-            "SELECT information_schema.tables.table_name " +
+            "SELECT information_schema.tables.table_name AS table_name " +
             "WHERE (((information_schema.tables.table_type = 'BASE TABLE') " +
             "AND (NOT (information_schema.tables.table_schema = ANY(['information_schema', 'sys', 'pg_catalog'])))) " +
             "AND (information_schema.tables.table_name LIKE '%')) " +
-            "ORDER BY information_schema.tables.table_name"));
+            "ORDER BY information_schema.tables.table_name AS table_name"));
     }
 
     @Test

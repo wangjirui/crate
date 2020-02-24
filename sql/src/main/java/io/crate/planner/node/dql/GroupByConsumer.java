@@ -22,9 +22,7 @@
 package io.crate.planner.node.dql;
 
 import io.crate.analyze.WhereClause;
-import io.crate.expression.symbol.DefaultTraversalSymbolVisitor;
 import io.crate.expression.symbol.Symbol;
-import io.crate.expression.symbol.format.SymbolPrinter;
 import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.Reference;
 import io.crate.metadata.doc.DocTableInfo;
@@ -32,8 +30,6 @@ import io.crate.metadata.doc.DocTableInfo;
 import java.util.List;
 
 public class GroupByConsumer {
-
-    private static final GroupByValidator GROUP_BY_VALIDATOR = new GroupByValidator();
 
     public static boolean groupedByClusteredColumnOrPrimaryKeys(DocTableInfo tableInfo,
                                                                 WhereClause whereClause,
@@ -75,23 +71,5 @@ public class GroupByConsumer {
             }
         }
         return true;
-    }
-
-    public static void validateGroupBySymbols(List<Symbol> groupBySymbols) {
-        for (Symbol symbol : groupBySymbols) {
-            symbol.accept(GROUP_BY_VALIDATOR, null);
-        }
-    }
-
-    private static class GroupByValidator extends DefaultTraversalSymbolVisitor<Void, Void> {
-
-        @Override
-        public Void visitReference(Reference symbol, Void context) {
-            if (symbol.indexType() == Reference.IndexType.ANALYZED) {
-                throw new IllegalArgumentException(
-                        SymbolPrinter.format("Cannot GROUP BY '%s': grouping on analyzed/fulltext columns is not possible", symbol));
-            }
-            return null;
-        }
     }
 }

@@ -33,7 +33,9 @@ import io.crate.execution.dsl.projection.builder.ProjectionBuilder;
 import io.crate.execution.engine.pipeline.TopN;
 import io.crate.expression.symbol.AggregateMode;
 import io.crate.expression.symbol.Function;
+import io.crate.expression.symbol.ScopedSymbol;
 import io.crate.expression.symbol.Symbol;
+import io.crate.metadata.Reference;
 import io.crate.metadata.RowGranularity;
 import io.crate.metadata.doc.DocTableInfo;
 import io.crate.planner.ExecutionPlan;
@@ -41,6 +43,8 @@ import io.crate.planner.Merge;
 import io.crate.planner.PlannerContext;
 import io.crate.planner.distribution.DistributionInfo;
 import io.crate.planner.node.dql.GroupByConsumer;
+import io.crate.statistics.ColumnStats;
+import io.crate.statistics.Stats;
 import io.crate.statistics.TableStats;
 
 import javax.annotation.Nullable;
@@ -62,36 +66,39 @@ public class GroupHashAggregate extends ForwardingLogicalPlan {
     static long approximateDistinctValues(long numSourceRows, TableStats tableStats, List<Symbol> groupKeys) {
         long distinctValues = 1;
         int numKeysWithStats = 0;
-        // TODO: Need some kind of stats propagation
-        /*
         for (Symbol groupKey : groupKeys) {
-            while (groupKey instanceof ScopedSymbol) {
-                groupKey = ((ScopedSymbol) groupKey).pointer();
-            }
+
+            Stats stats = null;
+            ColumnStats columnStats = null;
             if (groupKey instanceof Reference) {
                 Reference ref = (Reference) groupKey;
-                Stats stats = tableStats.getStats(ref.ident().tableIdent());
-                ColumnStats columnStats = stats.statsByColumn().get(ref.column());
-                if (columnStats == null) {
-                    // Assume worst case: Every value is unique
-                    distinctValues *= numSourceRows;
-                } else {
-                    // `approxDistinct` is the number of distinct values in relation to `stats.numDocs()´, not in
-                    // relation to `numSourceRows`, which is based on the estimates of a source operator.
-                    // That is why we calculate the cardinality ratio and calculate the new distinct
-                    // values based on `numSourceRows` to account for changes in the number of rows in source operators
-                    //
-                    // e.g. SELECT x, count(*) FROM tbl GROUP BY x
-                    // and  SELECT x, count(*) FROM tbl WHERE pk = 1 GROUP BY x
-                    //
-                    // have a different number of groups
-                    double cardinalityRatio = columnStats.approxDistinct() / stats.numDocs();
-                    distinctValues *= (long) (numSourceRows * cardinalityRatio);
-                }
+                stats = tableStats.getStats(ref.ident().tableIdent());
+                columnStats = stats.statsByColumn().get(ref.column());
+                numKeysWithStats++;
+            } else if (groupKey instanceof ScopedSymbol) {
+                ScopedSymbol scopedSymbol = (ScopedSymbol) groupKey;
+                stats = tableStats.getStats(scopedSymbol.relation());
+                columnStats = stats.statsByColumn().get(scopedSymbol.column());
                 numKeysWithStats++;
             }
+
+            if (columnStats == null) {
+                // Assume worst case: Every value is unique
+                distinctValues *= numSourceRows;
+            } else {
+                // `approxDistinct` is the number of distinct values in relation to `stats.numDocs()´, not in
+                // relation to `numSourceRows`, which is based on the estimates of a source operator.
+                // That is why we calculate the cardinality ratio and calculate the new distinct
+                // values based on `numSourceRows` to account for changes in the number of rows in source operators
+                //
+                // e.g. SELECT x, count(*) FROM tbl GROUP BY x
+                // and  SELECT x, count(*) FROM tbl WHERE pk = 1 GROUP BY x
+                //
+                // have a different number of groups
+                double cardinalityRatio = columnStats.approxDistinct() / stats.numDocs();
+                distinctValues *= (long) (numSourceRows * cardinalityRatio);
+            }
         }
-         */
         if (numKeysWithStats == groupKeys.size()) {
             return Math.min(distinctValues, numSourceRows);
         } else {
@@ -105,7 +112,6 @@ public class GroupHashAggregate extends ForwardingLogicalPlan {
         this.outputs = Lists2.concat(groupKeys, aggregates);
         this.groupKeys = groupKeys;
         this.aggregates = aggregates;
-        GroupByConsumer.validateGroupBySymbols(groupKeys);
     }
 
     @Override
