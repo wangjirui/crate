@@ -63,27 +63,25 @@ public class QueriedSelectRelation implements AnalyzedRelation {
 
     public Symbol getField(ColumnIdent column, Operation operation) throws UnsupportedOperationException, ColumnUnknownException {
         Symbol match = null;
-        // SELECT obj['x'] FROM (select...)
-        // This is to optimize `obj['x']` to a reference with path instead of building a subscript function.
-        for (AnalyzedRelation analyzedRelation : from) {
-            Symbol field = analyzedRelation.getField(column, operation);
-            if (field != null) {
+        for (Symbol output : outputs()) {
+            ColumnIdent outputName = Symbols.pathFromSymbol(output);
+            if (outputName.equals(column)) {
                 if (match != null) {
-                    throw new AmbiguousColumnException(column, field);
+                    throw new AmbiguousColumnException(column, output);
                 }
-                match = field;
+                match = output;
             }
         }
-        // SELECT x AS xx, y FROM tbl1
-        // The logic above can't match `xx`; The alias is only available in the outputs
         if (match == null) {
-            for (Symbol output : outputs()) {
-                ColumnIdent outputName = Symbols.pathFromSymbol(output);
-                if (outputName.equals(column)) {
+            // SELECT obj['x'] FROM (select...)
+            // This is to optimize `obj['x']` to a reference with path instead of building a subscript function.
+            for (AnalyzedRelation analyzedRelation : from) {
+                Symbol field = analyzedRelation.getField(column, operation);
+                if (field != null) {
                     if (match != null) {
-                        throw new AmbiguousColumnException(column, output);
+                        throw new AmbiguousColumnException(column, field);
                     }
-                    match = output;
+                    match = field;
                 }
             }
         }

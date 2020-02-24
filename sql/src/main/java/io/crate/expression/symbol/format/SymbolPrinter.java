@@ -30,6 +30,7 @@ import io.crate.expression.predicate.MatchPredicate;
 import io.crate.expression.predicate.NotPredicate;
 import io.crate.expression.scalar.ExtractFunctions;
 import io.crate.expression.scalar.SubscriptFunction;
+import io.crate.expression.scalar.SubscriptObjectFunction;
 import io.crate.expression.scalar.arithmetic.ArithmeticFunctions;
 import io.crate.expression.scalar.cast.CastFunctionResolver;
 import io.crate.expression.scalar.systeminformation.CurrentSchemaFunction;
@@ -169,6 +170,7 @@ public final class SymbolPrinter {
                     break;
 
                 case SubscriptFunction.NAME:
+                case SubscriptObjectFunction.NAME:
                     printSubscriptFunction(function);
                     break;
 

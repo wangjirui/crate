@@ -29,6 +29,7 @@ import io.crate.analyze.HavingClause;
 import io.crate.analyze.OrderBy;
 import io.crate.analyze.QueriedSelectRelation;
 import io.crate.analyze.WhereClause;
+import io.crate.analyze.relations.AbstractTableRelation;
 import io.crate.analyze.relations.AliasedAnalyzedRelation;
 import io.crate.analyze.relations.AnalyzedRelation;
 import io.crate.analyze.relations.AnalyzedRelationVisitor;
@@ -37,6 +38,7 @@ import io.crate.analyze.relations.DocTableRelation;
 import io.crate.analyze.relations.TableFunctionRelation;
 import io.crate.analyze.relations.TableRelation;
 import io.crate.analyze.relations.UnionSelect;
+import io.crate.common.collections.Lists2;
 import io.crate.data.Row;
 import io.crate.data.RowConsumer;
 import io.crate.execution.MultiPhaseExecutor;
@@ -44,6 +46,7 @@ import io.crate.execution.dsl.phases.NodeOperationTree;
 import io.crate.execution.dsl.projection.builder.SplitPoints;
 import io.crate.execution.dsl.projection.builder.SplitPointsBuilder;
 import io.crate.execution.engine.NodeOperationTreeGenerator;
+import io.crate.expression.symbol.FieldReplacer;
 import io.crate.expression.symbol.FieldsVisitor;
 import io.crate.expression.symbol.Function;
 import io.crate.expression.symbol.Literal;
@@ -279,8 +282,16 @@ public class LogicalPlanner {
         @Override
         public LogicalPlan visitAliasedAnalyzedRelation(AliasedAnalyzedRelation relation, List<Symbol> outputs) {
             var child = relation.relation();
-            var source = child.accept(this, child.outputs());
-            return new Rename(relation.outputs(), relation.relationName(), relation, source);
+            if (child instanceof AbstractTableRelation<?>) {
+                List<Symbol> mappedOutputs = Lists2.map(outputs, FieldReplacer.bind(relation::resolveField));
+                var source = child.accept(this, mappedOutputs);
+                return new Rename(outputs, relation.relationName(), relation, source);
+            } else {
+                // Can't do outputs propagation because field reverse resolving could be ambiguous
+                //  `SELECT * FROM (select * from t as t1, t as t2)` -> x can refer to t1.x or t2.x
+                var source = child.accept(this, child.outputs());
+                return new Rename(relation.outputs(), relation.relationName(), relation, source);
+            }
         }
 
         @Override

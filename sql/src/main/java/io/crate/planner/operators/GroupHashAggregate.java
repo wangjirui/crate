@@ -117,7 +117,6 @@ public class GroupHashAggregate extends ForwardingLogicalPlan {
         return aggregates;
     }
 
-
     @Override
     public ExecutionPlan build(PlannerContext plannerContext,
                                ProjectionBuilder projectionBuilder,
@@ -132,12 +131,17 @@ public class GroupHashAggregate extends ForwardingLogicalPlan {
         if (executionPlan.resultDescription().hasRemainingLimitOrOffset()) {
             executionPlan = Merge.ensureOnHandler(executionPlan, plannerContext);
         }
+        SubQueryAndParamBinder paramBinder = new SubQueryAndParamBinder(params, subQueryResults);
+        List<Symbol> boundGroupKeys = Lists2.map(groupKeys, paramBinder);
+        //noinspection unchecked,rawtypes
+        List<Function> boundAggregates = (List<Function>)(List) Lists2.map(aggregates, paramBinder);
+
         List<Symbol> sourceOutputs = source.outputs();
         if (shardsContainAllGroupKeyValues()) {
             GroupProjection groupProjection = projectionBuilder.groupProjection(
                 sourceOutputs,
-                groupKeys,
-                aggregates,
+                boundGroupKeys,
+                boundAggregates,
                 AggregateMode.ITER_FINAL,
                 source.preferShardProjections() ? RowGranularity.SHARD : RowGranularity.CLUSTER
             );
@@ -148,21 +152,21 @@ public class GroupHashAggregate extends ForwardingLogicalPlan {
         if (ExecutionPhases.executesOnHandler(plannerContext.handlerNode(), executionPlan.resultDescription().nodeIds())) {
             if (source.preferShardProjections()) {
                 executionPlan.addProjection(projectionBuilder.groupProjection(
-                    sourceOutputs, groupKeys, aggregates, AggregateMode.ITER_PARTIAL, RowGranularity.SHARD));
+                    sourceOutputs, boundGroupKeys, boundAggregates, AggregateMode.ITER_PARTIAL, RowGranularity.SHARD));
                 executionPlan.addProjection(projectionBuilder.groupProjection(
-                    outputs, groupKeys, aggregates, AggregateMode.PARTIAL_FINAL, RowGranularity.NODE));
+                    outputs, boundGroupKeys, boundAggregates, AggregateMode.PARTIAL_FINAL, RowGranularity.NODE));
                 return executionPlan;
             } else {
                 executionPlan.addProjection(projectionBuilder.groupProjection(
-                    sourceOutputs, groupKeys, aggregates, AggregateMode.ITER_FINAL, RowGranularity.NODE));
+                    sourceOutputs, boundGroupKeys, boundAggregates, AggregateMode.ITER_FINAL, RowGranularity.NODE));
                 return executionPlan;
             }
         }
 
         GroupProjection toPartial = projectionBuilder.groupProjection(
             sourceOutputs,
-            groupKeys,
-            aggregates,
+            boundGroupKeys,
+            boundAggregates,
             AggregateMode.ITER_PARTIAL,
             source.preferShardProjections() ? RowGranularity.SHARD : RowGranularity.NODE
         );
@@ -171,8 +175,8 @@ public class GroupHashAggregate extends ForwardingLogicalPlan {
 
         GroupProjection toFinal = projectionBuilder.groupProjection(
             this.outputs,
-            groupKeys,
-            aggregates,
+            boundGroupKeys,
+            boundAggregates,
             AggregateMode.PARTIAL_FINAL,
             RowGranularity.CLUSTER
         );

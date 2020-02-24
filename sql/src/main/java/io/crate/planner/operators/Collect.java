@@ -327,6 +327,11 @@ public class Collect implements LogicalPlan {
         }
 
         @Override
+        public Void visitMatchPredicate(io.crate.expression.symbol.MatchPredicate matchPredicate, Void context) {
+            throw new UnsupportedFeatureException("Cannot use match predicate on system tables");
+        }
+
+        @Override
         public Void visitFunction(Function symbol, Void context) {
             if (symbol.info().ident().name().equals(MatchPredicate.NAME)) {
                 throw new UnsupportedFeatureException("Cannot use match predicate on system tables");

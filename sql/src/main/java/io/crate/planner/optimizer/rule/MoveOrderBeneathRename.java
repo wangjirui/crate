@@ -22,10 +22,10 @@
 
 package io.crate.planner.optimizer.rule;
 
+import io.crate.analyze.OrderBy;
 import io.crate.expression.symbol.FieldReplacer;
 import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.TransactionContext;
-import io.crate.statistics.TableStats;
 import io.crate.planner.operators.LogicalPlan;
 import io.crate.planner.operators.Order;
 import io.crate.planner.operators.Rename;
@@ -33,6 +33,7 @@ import io.crate.planner.optimizer.Rule;
 import io.crate.planner.optimizer.matcher.Capture;
 import io.crate.planner.optimizer.matcher.Captures;
 import io.crate.planner.optimizer.matcher.Pattern;
+import io.crate.statistics.TableStats;
 
 import java.util.List;
 import java.util.function.Function;
@@ -82,7 +83,12 @@ public final class MoveOrderBeneathRename implements Rule<Order> {
                              TransactionContext txnCtx) {
         Rename rename = captures.get(renameCapture);
         Function<? super Symbol, ? extends Symbol> mapField = FieldReplacer.bind(rename::resolveField);
-        Order newOrder = new Order(rename.source(), plan.orderBy().map(mapField));
-        return rename.replaceSources(List.of(newOrder));
+        OrderBy mappedOrderBy = plan.orderBy().map(mapField);
+        if (rename.source().outputs().containsAll(mappedOrderBy.orderBySymbols())) {
+            Order newOrder = new Order(rename.source(), mappedOrderBy);
+            return rename.replaceSources(List.of(newOrder));
+        } else {
+            return null;
+        }
     }
 }

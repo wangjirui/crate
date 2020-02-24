@@ -55,7 +55,7 @@ public final class Lists2 {
         return xs;
     }
 
-    public static <T> List<T> concatUnique(List<? extends T> list1, List<? extends T> list2) {
+    public static <T> List<T> concatUnique(List<? extends T> list1, Collection<? extends T> list2) {
         List<T> result = new ArrayList<>(list1.size() + list2.size());
         result.addAll(list1);
         for (T item : list2) {

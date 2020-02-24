@@ -95,9 +95,10 @@ public class LogicalPlannerTest extends CrateDummyClusterServiceUnitTest {
     @Test
     public void testQTFWithOrderByAndAlias() throws Exception {
         LogicalPlan plan = plan("select a, x from t1 as t order by a");
-        assertThat(plan, isPlan("OrderBy[a ASC]\n" +
-                                "Rename[a, x] AS t\n" +
-                                "Collect[doc.t1 | [a, x] | true]\n"));
+        assertThat(plan, isPlan(
+            "OrderBy[a ASC]\n" +
+            "Rename[a, x] AS t\n" +
+            "Collect[doc.t1 | [a, x] | true]\n"));
     }
 
     @Test
@@ -200,7 +201,7 @@ public class LogicalPlannerTest extends CrateDummyClusterServiceUnitTest {
         assertThat(plan, isPlan("Eval[i, cnt]\n" +
                                 "HashJoin[\n" +
                                 "    Rename[cnt] AS t1\n" +     // Aliased relation boundary
-                                "    Eval[count() AS cnt]\n" +
+                                "    Eval[count(*) AS cnt]\n" +
                                 "    Count[doc.t1 | true]\n" +
                                 "    --- INNER ---\n" +
                                 "    Rename[i] AS t2\n" +       // Aliased relation boundary
@@ -303,13 +304,12 @@ public class LogicalPlannerTest extends CrateDummyClusterServiceUnitTest {
                               "FROM v2 " +
                               "  INNER JOIN v3 " +
                               "  ON v2.x= v3.x");
-        assertThat(plan, isPlan("HashJoin[\n" +
-                                "    Rename[x, a] AS doc.v2\n" +
-                                "    Eval[x, a]\n" +
+        assertThat(plan, isPlan("Eval[x, a, x, a]\n" +
+                                "HashJoin[\n" +
+                                "    Rename[a, x] AS doc.v2\n" +
                                 "    Collect[doc.t1 | [a, x] | true]\n" +
                                 "    --- INNER ---\n" +
-                                "    Rename[x, a] AS doc.v3\n" +
-                                "    Eval[x, a]\n" +
+                                "    Rename[a, x] AS doc.v3\n" +
                                 "    Collect[doc.t1 | [a, x] | true]\n" +
                                 "]\n"));
     }

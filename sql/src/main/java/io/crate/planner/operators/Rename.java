@@ -55,6 +55,10 @@ public final class Rename extends ForwardingLogicalPlan implements FieldResolver
             : "Rename operator must have exactly the same number of outputs as the source operator";
     }
 
+    public RelationName name() {
+        return name;
+    }
+
     @Override
     public List<Symbol> outputs() {
         return outputs;
