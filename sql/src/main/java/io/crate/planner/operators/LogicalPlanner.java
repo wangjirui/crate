@@ -37,7 +37,6 @@ import io.crate.analyze.relations.DocTableRelation;
 import io.crate.analyze.relations.TableFunctionRelation;
 import io.crate.analyze.relations.TableRelation;
 import io.crate.analyze.relations.UnionSelect;
-import io.crate.common.collections.Lists2;
 import io.crate.data.Row;
 import io.crate.data.RowConsumer;
 import io.crate.execution.MultiPhaseExecutor;
@@ -45,7 +44,6 @@ import io.crate.execution.dsl.phases.NodeOperationTree;
 import io.crate.execution.dsl.projection.builder.SplitPoints;
 import io.crate.execution.dsl.projection.builder.SplitPointsBuilder;
 import io.crate.execution.engine.NodeOperationTreeGenerator;
-import io.crate.expression.symbol.FieldReplacer;
 import io.crate.expression.symbol.FieldsVisitor;
 import io.crate.expression.symbol.Function;
 import io.crate.expression.symbol.Literal;
@@ -281,23 +279,15 @@ public class LogicalPlanner {
         @Override
         public LogicalPlan visitAliasedAnalyzedRelation(AliasedAnalyzedRelation relation, List<Symbol> outputs) {
             var child = relation.relation();
-            // required remap here might be an indication that we should remove the PlanBuilderContext
-            // and settle for optimization rules
-            var remapScopedSymbols = FieldReplacer.bind(relation::resolveField);
-            List<Symbol> mappedOutputs = Lists2.map(outputs, remapScopedSymbols);
-            var source = child.accept(this, mappedOutputs);
-            return new Rename(outputs, relation.relationName(), relation, source);
+            var source = child.accept(this, child.outputs());
+            return new Rename(relation.outputs(), relation.relationName(), relation, source);
         }
 
         @Override
         public LogicalPlan visitView(AnalyzedView view, List<Symbol> outputs) {
             var child = view.relation();
-            // required remap here might be an indication that we should remove the PlanBuilderContext
-            // and settle for optimization rules
-            var remapScopedSymbols = FieldReplacer.bind(view::resolveField);
-            List<Symbol> mappedOutputs = Lists2.map(outputs, remapScopedSymbols);
-            var source = child.accept(this, mappedOutputs);
-            return new Rename(outputs, view.relationName(), view, source);
+            var source = child.accept(this, child.outputs());
+            return new Rename(view.outputs(), view.relationName(), view, source);
         }
 
         @Override

@@ -119,8 +119,8 @@ public class PushDownTest extends CrateDummyClusterServiceUnitTest {
                                                          "        Collect[doc.t1 | [a] | true]\n" +
                                                          "]\n" +
                                                          "    --- INNER ---\n" +
-                                                         "    Rename[a] AS t3\n" +
-                                                         "    Collect[doc.t1 | [a] | true]\n" +
+                                                         "    Rename[a, x, i] AS t3\n" +
+                                                         "    Collect[doc.t1 | [a, x, i] | true]\n" +
                                                          "]\n"));
     }
 
@@ -190,8 +190,8 @@ public class PushDownTest extends CrateDummyClusterServiceUnitTest {
                                                          "        Collect[doc.t1 | [a] | true]\n" +
                                                          "]\n" +
                                                          "    --- LEFT ---\n" +
-                                                         "    Rename[a] AS t3\n" +
-                                                         "    Collect[doc.t1 | [a] | true]\n" +
+                                                         "    Rename[a, x, i] AS t3\n" +
+                                                         "    Collect[doc.t1 | [a, x, i] | true]\n" +
                                                          "]\n"));
     }
 
@@ -242,8 +242,8 @@ public class PushDownTest extends CrateDummyClusterServiceUnitTest {
             plan,
             LogicalPlannerTest.isPlan(sqlExecutor.functions(),
                 "RootBoundary[name]\n" +
-                "Rename[name] AS t\n" +
                 "Eval[name]\n" +
+                "Rename[id, name] AS t\n" +
                 "Collect[sys.nodes | [id, name] | (id = 'nodeName')]\n"));
     }
 
@@ -257,13 +257,10 @@ public class PushDownTest extends CrateDummyClusterServiceUnitTest {
         );
         var expectedPlan =
             "RootBoundary[a, x, i, b, y, i]\n" +
-            "Boundary[a, x, i, b, y, i]\n" +
-            "Boundary[a, x, i, b, y, i]\n" +
+            "Rename[a, x, i, b, y, i] AS tjoin\n" +
             "HashJoin[\n" +
-            "    Boundary[a, x, i]\n" +
             "    Collect[doc.t1 | [a, x, i] | (x = 10)]\n" +
             "    --- INNER ---\n" +
-            "    Boundary[b, y, i]\n" +
             "    Collect[doc.t2 | [b, y, i] | true]\n" +
             "]\n";
         assertThat(plan, isPlan(sqlExecutor.functions(), expectedPlan));
@@ -278,13 +275,10 @@ public class PushDownTest extends CrateDummyClusterServiceUnitTest {
         );
         var expectedPlan =
             "RootBoundary[a, x, i, b, y, i]\n" +
-            "Boundary[a, x, i, b, y, i]\n" +
-            "Boundary[a, x, i, b, y, i]\n" +
+            "Rename[a, x, i, b, y, i] AS tjoin\n" +
             "NestedLoopJoin[\n" +
-            "    Boundary[a, x, i]\n" +
             "    Collect[doc.t1 | [a, x, i] | (x = 10)]\n" +
             "    --- CROSS ---\n" +
-            "    Boundary[b, y, i]\n" +
             "    Collect[doc.t2 | [b, y, i] | true]\n" +
             "]\n";
         assertThat(plan, isPlan(sqlExecutor.functions(), expectedPlan));
@@ -300,14 +294,11 @@ public class PushDownTest extends CrateDummyClusterServiceUnitTest {
         );
         var expectedPlan =
             "RootBoundary[a, x, i, b, y, i]\n" +
-            "Boundary[a, x, i, b, y, i]\n" +
-            "Boundary[a, x, i, b, y, i]\n" +
+            "Rename[a, x, i, b, y, i] AS tjoin\n" +
             "Filter[(concat(a, b) = '')]\n" +
             "HashJoin[\n" +
-            "    Boundary[a, x, i]\n" +
             "    Collect[doc.t1 | [a, x, i] | (x = 10)]\n" +
             "    --- INNER ---\n" +
-            "    Boundary[b, y, i]\n" +
             "    Collect[doc.t2 | [b, y, i] | (y = 20)]\n" +
             "]\n";
         assertThat(plan, isPlan(sqlExecutor.functions(), expectedPlan));
