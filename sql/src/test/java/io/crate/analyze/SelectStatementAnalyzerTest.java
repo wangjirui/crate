@@ -904,7 +904,7 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
         assertThat(relation.outputs().size(), is(1));
         Symbol s = relation.outputs().get(0);
         assertThat(s, notNullValue());
-        assertThat(s, isField("friends['id']"));
+        assertThat(s, isFunction(SubscriptFunction.NAME, isField("friends"), isLiteral("id")));
     }
 
     @Test
@@ -1361,7 +1361,7 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
                     isFunction(
                         SubscriptFunction.NAME,
                         isFunction("regexp_matches", isReference("name"), isLiteral(".*")),
-                        isLiteral(1L)
+                        isLiteral(1)
                     )
                 )
             )
@@ -1918,7 +1918,7 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
         QueriedSelectRelation relation = analyze("select s.friends['id'] from (select friends from doc.users) s");
         assertThat(
             relation.outputs(),
-            contains(isField("friends['id']"))
+            contains(isFunction(SubscriptFunction.NAME, isField("friends"), isLiteral("id")))
         );
     }
 
@@ -1926,19 +1926,16 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
     public void test_can_access_element_within_object_array_of_derived_table_containing_a_join() {
         AnalyzedRelation relation = analyze("select joined.f1['id'], joined.f2['id'] from " +
                 "(select u1.friends as f1, u2.friends as f2 from doc.users u1, doc.users u2) joined");
-        fail("todo");
-        /*
-        assertThat(relation.outputs().get(0),
-                   fieldPointsToReferenceOf("friends['id']", "doc.users"));
-        assertThat(relation.outputs().get(1),
-                   fieldPointsToReferenceOf("friends['id']", "doc.users"));
-         */
+        assertThat(relation.outputs(), contains(
+            isFunction(SubscriptFunction.NAME, isField("f1"), isLiteral("id")),
+            isFunction(SubscriptFunction.NAME, isField("f2"), isLiteral("id"))
+        ));
     }
 
     @Test
     public void test_can_access_element_within_object_array_of_derived_table_containing_a_join_with_ambiguous_column_name() {
         expectedException.expect(AmbiguousColumnException.class);
-        expectedException.expectMessage("Column \"friends['id']\" is ambiguous");
+        expectedException.expectMessage("Column \"friends\" is ambiguous");
         analyze("select joined.friends['id'] from " +
                 "(select u1.friends, u2.friends from doc.users u1, doc.users u2) joined");
     }
@@ -1949,11 +1946,13 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
                 "  (select friends as f1 from doc.users u1 " +
                 "   union all" +
                 "   select friends from doc.users u2) as joined");
-        fail("update");
-        /*
-        assertThat(relation.outputs().get(0),
-                   fieldPointsToReferenceOf("friends['id']", "doc.users"));
-         */
+        assertThat(relation.outputs(), contains(
+            isFunction(
+                SubscriptFunction.NAME,
+                isField("f1"),
+                isLiteral("id")
+            )
+       ));
     }
 
     @Test
