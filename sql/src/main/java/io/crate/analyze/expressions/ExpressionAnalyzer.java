@@ -659,6 +659,9 @@ public class ExpressionAnalyzer {
                 try {
                     name = fieldProvider.resolveField(qualifiedName, parts, operation);
                 } catch (ColumnUnknownException e) {
+                    if (operation != Operation.READ) {
+                        throw e;
+                    }
                     try {
                         Symbol base = fieldProvider.resolveField(qualifiedName, List.of(), operation);
                         return allocateFunction(
