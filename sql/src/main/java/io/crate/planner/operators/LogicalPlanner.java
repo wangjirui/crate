@@ -26,6 +26,7 @@ import io.crate.analyze.AnalyzedInsertStatement;
 import io.crate.analyze.AnalyzedStatement;
 import io.crate.analyze.AnalyzedStatementVisitor;
 import io.crate.analyze.HavingClause;
+import io.crate.analyze.OrderBy;
 import io.crate.analyze.QueriedSelectRelation;
 import io.crate.analyze.WhereClause;
 import io.crate.analyze.relations.AliasedAnalyzedRelation;
@@ -84,6 +85,7 @@ import io.crate.planner.optimizer.rule.RewriteCollectToGet;
 import io.crate.planner.optimizer.rule.RewriteFilterOnOuterJoinToInnerJoin;
 import io.crate.planner.optimizer.rule.RewriteGroupByKeysLimitToTopNDistinct;
 import io.crate.statistics.TableStats;
+import io.crate.types.DataTypes;
 import org.elasticsearch.Version;
 
 import java.util.Collection;
@@ -172,7 +174,6 @@ public class LogicalPlanner {
         LogicalPlan plan = plan(
             relation,
             subqueryPlanner,
-            functions,
             txnCtx,
             Set.of(),
             tableStats,
@@ -189,17 +190,16 @@ public class LogicalPlanner {
     // See issue https://github.com/crate/crate/issues/6755
     // If the output values are already sorted (even in desc order) no optimization is needed
     private LogicalPlan tryOptimizeForInSubquery(SelectSymbol selectSymbol, AnalyzedRelation relation, LogicalPlan planBuilder) {
-        // TODO: re-add optimization
-        /*
-        if (selectSymbol.getResultType() == SelectSymbol.ResultType.SINGLE_COLUMN_MULTIPLE_VALUES) {
-            OrderBy relationOrderBy = relation.orderBy();
-            Symbol firstOutput = relation.outputs().get(0);
+        if (selectSymbol.getResultType() == SelectSymbol.ResultType.SINGLE_COLUMN_MULTIPLE_VALUES && relation instanceof QueriedSelectRelation) {
+            QueriedSelectRelation queriedRelation = (QueriedSelectRelation) relation;
+            OrderBy relationOrderBy = queriedRelation.orderBy();
+            Symbol firstOutput = queriedRelation.outputs().get(0);
             if ((relationOrderBy == null || relationOrderBy.orderBySymbols().get(0).equals(firstOutput) == false)
                 && DataTypes.PRIMITIVE_TYPES.contains(firstOutput.valueType())) {
+
                 return Order.create(planBuilder, new OrderBy(Collections.singletonList(firstOutput)));
             }
         }
-         */
         return planBuilder;
     }
 
@@ -212,7 +212,6 @@ public class LogicalPlanner {
         LogicalPlan logicalPlan = plan(
             relation,
             subqueryPlanner,
-            functions,
             coordinatorTxnCtx,
             hints,
             tableStats,
@@ -222,7 +221,6 @@ public class LogicalPlanner {
 
     static LogicalPlan plan(AnalyzedRelation relation,
                             SubqueryPlanner subqueryPlanner,
-                            Functions functions,
                             CoordinatorTxnCtx txnCtx,
                             Set<PlanHint> hints,
                             TableStats tableStats,
@@ -237,32 +235,13 @@ public class LogicalPlanner {
             params
         );
         return MultiPhase.createIfNeeded(
-            relation.accept(planBuilder, new PlanBuilderContext(relation.outputs(), WhereClause.MATCH_ALL)),
+            relation.accept(planBuilder, relation.outputs()),
             relation,
             subqueryPlanner
         );
     }
 
-    static class PlanBuilderContext {
-
-        final List<Symbol> toCollect;
-        final WhereClause whereClause;
-
-        // used to pass on splitPoints.toCollect and whereClause from QueriedSelectRelation to the child
-        // We could also not do that and instead rely on optimization rules
-        // - Collect operator would default to outputs of the TableRelation; would need column pruning rule
-        // - WhereClause would be added as filter initially and would be pushed into Collect via rule
-
-        // TODO: toCollect propagation is currently also necessary because `tableRel.outputs()` never contains
-        // system columns.
-        public PlanBuilderContext(List<Symbol> toCollect, WhereClause whereClause) {
-            this.toCollect = toCollect;
-            this.whereClause = whereClause;
-        }
-    }
-
-
-    static class PlanBuilder extends AnalyzedRelationVisitor<PlanBuilderContext, LogicalPlan> {
+    static class PlanBuilder extends AnalyzedRelationVisitor<List<Symbol>, LogicalPlan> {
 
         private final CoordinatorTxnCtx txnCtx;
         private final Set<PlanHint> hints;
@@ -280,66 +259,60 @@ public class LogicalPlanner {
         }
 
         @Override
-        public LogicalPlan visitAnalyzedRelation(AnalyzedRelation relation, PlanBuilderContext context) {
+        public LogicalPlan visitAnalyzedRelation(AnalyzedRelation relation, List<Symbol> outputs) {
             throw new UnsupportedOperationException(relation.getClass().getSimpleName() + " NYI");
         }
 
         @Override
-        public LogicalPlan visitTableFunctionRelation(TableFunctionRelation relation, PlanBuilderContext context) {
-            return TableFunction.create(relation, context.toCollect, context.whereClause);
+        public LogicalPlan visitTableFunctionRelation(TableFunctionRelation relation, List<Symbol> outputs) {
+            return TableFunction.create(relation, outputs, WhereClause.MATCH_ALL);
         }
 
         @Override
-        public LogicalPlan visitDocTableRelation(DocTableRelation relation, PlanBuilderContext context) {
-            return Collect.create(relation, context.toCollect, context.whereClause, hints, tableStats, params);
+        public LogicalPlan visitDocTableRelation(DocTableRelation relation, List<Symbol> outputs) {
+            return Collect.create(relation, outputs, WhereClause.MATCH_ALL, hints, tableStats, params);
         }
 
         @Override
-        public LogicalPlan visitTableRelation(TableRelation relation, PlanBuilderContext context) {
-            return Collect.create(relation, context.toCollect, context.whereClause, hints, tableStats, params);
+        public LogicalPlan visitTableRelation(TableRelation relation, List<Symbol> outputs) {
+            return Collect.create(relation, outputs, WhereClause.MATCH_ALL, hints, tableStats, params);
         }
 
         @Override
-        public LogicalPlan visitAliasedAnalyzedRelation(AliasedAnalyzedRelation relation, PlanBuilderContext context) {
+        public LogicalPlan visitAliasedAnalyzedRelation(AliasedAnalyzedRelation relation, List<Symbol> outputs) {
             var child = relation.relation();
             // required remap here might be an indication that we should remove the PlanBuilderContext
             // and settle for optimization rules
             var remapScopedSymbols = FieldReplacer.bind(relation::resolveField);
-            var newCtx = new PlanBuilderContext(
-                Lists2.map(context.toCollect, remapScopedSymbols),
-                context.whereClause.map(remapScopedSymbols)
-            );
-            var source = child.accept(this, newCtx);
-            return new Rename(context.toCollect, relation.relationName(), relation, source);
+            List<Symbol> mappedOutputs = Lists2.map(outputs, remapScopedSymbols);
+            var source = child.accept(this, mappedOutputs);
+            return new Rename(outputs, relation.relationName(), relation, source);
         }
 
         @Override
-        public LogicalPlan visitView(AnalyzedView view, PlanBuilderContext context) {
+        public LogicalPlan visitView(AnalyzedView view, List<Symbol> outputs) {
             var child = view.relation();
             // required remap here might be an indication that we should remove the PlanBuilderContext
             // and settle for optimization rules
             var remapScopedSymbols = FieldReplacer.bind(view::resolveField);
-            var newCtx = new PlanBuilderContext(
-                Lists2.map(context.toCollect, remapScopedSymbols),
-                context.whereClause.map(remapScopedSymbols)
-            );
-            var source = child.accept(this, newCtx);
-            return new Rename(context.toCollect, view.relationName(), view, source);
+            List<Symbol> mappedOutputs = Lists2.map(outputs, remapScopedSymbols);
+            var source = child.accept(this, mappedOutputs);
+            return new Rename(outputs, view.relationName(), view, source);
         }
 
         @Override
-        public LogicalPlan visitUnionSelect(UnionSelect union, PlanBuilderContext context) {
+        public LogicalPlan visitUnionSelect(UnionSelect union, List<Symbol> outputs) {
             var lhsRel = union.left();
             var rhsRel = union.right();
             return new Union(
-                lhsRel.accept(this, new PlanBuilderContext(lhsRel.outputs(), WhereClause.MATCH_ALL)),
-                rhsRel.accept(this, new PlanBuilderContext(rhsRel.outputs(), WhereClause.MATCH_ALL)),
+                lhsRel.accept(this, lhsRel.outputs()),
+                rhsRel.accept(this, rhsRel.outputs()),
                 union.outputs()
             );
         }
 
         @Override
-        public LogicalPlan visitQueriedSelectRelation(QueriedSelectRelation relation, PlanBuilderContext context) {
+        public LogicalPlan visitQueriedSelectRelation(QueriedSelectRelation relation, List<Symbol> outputs) {
             SplitPoints splitPoints = SplitPointsBuilder.create(relation);
             LogicalPlan source = JoinPlanBuilder.buildJoinTree(
                 relation.from(),
@@ -347,7 +320,7 @@ public class LogicalPlanner {
                 relation.joinPairs(),
                 rel -> {
                     if (relation.from().size() == 1) {
-                        return rel.accept(this, new PlanBuilderContext(splitPoints.toCollect(), WhereClause.MATCH_ALL));
+                        return rel.accept(this, splitPoints.toCollect());
                     } else {
                         // TODO: Get rid of this
                         var toCollect = new LinkedHashSet<Symbol>(splitPoints.toCollect().size());
@@ -374,7 +347,7 @@ public class LogicalPlanner {
                                 RefVisitor.visitRefs(condition, addRefIfMatch);
                             }
                         }
-                        return rel.accept(this, new PlanBuilderContext(List.copyOf(toCollect), WhereClause.MATCH_ALL));
+                        return rel.accept(this, List.copyOf(toCollect));
                     }
                 },
                 txnCtx.sessionContext().isHashJoinEnabled()
@@ -394,9 +367,7 @@ public class LogicalPlanner {
                                                 splitPoints.aggregates(),
                                                 tableStats
                                             ),
-                                            having == null
-                                                ? context.whereClause
-                                                : context.whereClause.add(having.queryOrFallback())
+                                            having
                                         ),
                                         splitPoints.windowFunctions()
                                     ),
@@ -411,7 +382,7 @@ public class LogicalPlanner {
                         relation.limit(),
                         relation.offset()
                     ),
-                    context.toCollect
+                    outputs
                 );
         }
     }
