@@ -96,8 +96,8 @@ public class LogicalPlannerTest extends CrateDummyClusterServiceUnitTest {
     public void testQTFWithOrderByAndAlias() throws Exception {
         LogicalPlan plan = plan("select a, x from t1 as t order by a");
         assertThat(plan, isPlan(
-            "OrderBy[a ASC]\n" +
             "Rename[a, x] AS t\n" +
+            "OrderBy[a ASC]\n" +
             "Collect[doc.t1 | [a, x] | true]\n"));
     }
 
@@ -121,8 +121,8 @@ public class LogicalPlannerTest extends CrateDummyClusterServiceUnitTest {
                                 "   select a, x from t1 order by a limit 3) tt " +
                                 "order by x desc limit 1");
         assertThat(plan, isPlan("Limit[1;0]\n" +
-                                "OrderBy[x DESC]\n" +
                                 "Rename[a, x] AS tt\n" +
+                                "OrderBy[x DESC]\n" +
                                 "Limit[3;0]\n" +
                                 "OrderBy[a ASC]\n" +
                                 "Collect[doc.t1 | [a, x] | true]\n"));
