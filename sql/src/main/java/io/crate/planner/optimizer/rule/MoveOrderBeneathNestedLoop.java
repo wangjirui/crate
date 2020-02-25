@@ -103,7 +103,8 @@ public final class MoveOrderBeneathNestedLoop implements Rule<Order> {
                     nestedLoop.joinCondition(),
                     nestedLoop.isFiltered(),
                     nestedLoop.topMostLeftRelation(),
-                    true
+                    true,
+                    nestedLoop.isRewriteFilterOnOuterJoinToInnerJoinDone()
                 );
             }
         }
