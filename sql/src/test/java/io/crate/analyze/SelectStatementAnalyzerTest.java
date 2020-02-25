@@ -1453,13 +1453,6 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
     }
 
     @Test
-    public void testInvalidCastExpression() throws Exception {
-        expectedException.expect(IllegalArgumentException.class);
-        expectedException.expectMessage("Cannot cast expressions from type `text` to type `object_array`");
-        analyze("select cast(name as array(object)) from users");
-    }
-
-    @Test
     public void testSelectWithAliasRenaming() throws Exception {
         AnalyzedRelation relation = analyze("select text as name, name as n from users");
         assertThat(
