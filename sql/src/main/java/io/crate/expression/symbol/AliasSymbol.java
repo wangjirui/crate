@@ -77,4 +77,27 @@ public final class AliasSymbol extends Symbol {
         return alias;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        AliasSymbol that = (AliasSymbol) o;
+
+        if (!alias.equals(that.alias)) {
+            return false;
+        }
+        return symbol.equals(that.symbol);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = alias.hashCode();
+        result = 31 * result + symbol.hashCode();
+        return result;
+    }
 }

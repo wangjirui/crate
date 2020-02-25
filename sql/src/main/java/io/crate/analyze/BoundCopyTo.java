@@ -26,6 +26,7 @@ import com.google.common.base.MoreObjects;
 import io.crate.execution.dsl.projection.WriterProjection;
 import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.ColumnIdent;
+import io.crate.metadata.doc.DocTableInfo;
 
 import javax.annotation.Nullable;
 import java.util.List;
@@ -33,7 +34,9 @@ import java.util.Map;
 
 public class BoundCopyTo {
 
-    private final QueriedSelectRelation relation;
+    private final List<Symbol> outputs;
+    private final DocTableInfo table;
+    private final WhereClause whereClause;
     private final Symbol uri;
     private final boolean columnsDefined;
     @Nullable
@@ -48,14 +51,18 @@ public class BoundCopyTo {
      */
     private final Map<ColumnIdent, Symbol> overwrites;
 
-    public BoundCopyTo(QueriedSelectRelation relation,
+    public BoundCopyTo(List<Symbol> outputs,
+                       DocTableInfo table,
+                       WhereClause whereClause,
                        Symbol uri,
                        @Nullable WriterProjection.CompressionType compressionType,
                        @Nullable WriterProjection.OutputFormat outputFormat,
                        @Nullable List<String> outputNames,
                        boolean columnsDefined,
                        @Nullable Map<ColumnIdent, Symbol> overwrites) {
-        this.relation = relation;
+        this.outputs = outputs;
+        this.table = table;
+        this.whereClause = whereClause;
         this.uri = uri;
         this.columnsDefined = columnsDefined;
         this.compressionType = compressionType;
@@ -64,8 +71,16 @@ public class BoundCopyTo {
         this.overwrites = MoreObjects.firstNonNull(overwrites, Map.of());
     }
 
-    public QueriedSelectRelation relation() {
-        return relation;
+    public List<Symbol> outputs() {
+        return outputs;
+    }
+
+    public DocTableInfo table() {
+        return table;
+    }
+
+    public WhereClause whereClause() {
+        return whereClause;
     }
 
     public Symbol uri() {

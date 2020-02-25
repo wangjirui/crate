@@ -261,6 +261,9 @@ public class LogicalPlanner {
 
         @Override
         public LogicalPlan visitTableFunctionRelation(TableFunctionRelation relation, List<Symbol> outputs) {
+            // MultiPhase is needed here but not in `DocTableRelation` or `TableRelation` because
+            // `TableFunctionRelation` is also used for top-level `VALUES`
+            //    -> so there wouldn't be a `QueriedSelectRelation` that can do the MultiPhase handling
             return MultiPhase.createIfNeeded(
                 TableFunction.create(relation, outputs, WhereClause.MATCH_ALL),
                 relation,
