@@ -676,7 +676,10 @@ public class ExpressionAnalyzer {
                         }
                         return allocateFunction(
                             SubscriptFunction.NAME,
-                            List.of(base, node.index().accept(this, context)),
+                            List.of(
+                                node.base().accept(this, context),
+                                node.index().accept(this, context)
+                            ),
                             context
                         );
                     } catch (ColumnUnknownException e2) {

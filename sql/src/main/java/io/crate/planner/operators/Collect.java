@@ -30,18 +30,14 @@ import io.crate.analyze.relations.DocTableRelation;
 import io.crate.analyze.where.WhereClauseAnalyzer;
 import io.crate.common.collections.Lists2;
 import io.crate.data.Row;
-import io.crate.exceptions.UnsupportedFeatureException;
 import io.crate.exceptions.VersioninigValidationException;
 import io.crate.execution.dsl.phases.RoutedCollectPhase;
 import io.crate.execution.dsl.projection.builder.ProjectionBuilder;
 import io.crate.execution.engine.pipeline.TopN;
 import io.crate.expression.eval.EvaluatingNormalizer;
-import io.crate.expression.predicate.MatchPredicate;
-import io.crate.expression.symbol.Function;
 import io.crate.expression.symbol.Literal;
 import io.crate.expression.symbol.SelectSymbol;
 import io.crate.expression.symbol.Symbol;
-import io.crate.expression.symbol.SymbolVisitor;
 import io.crate.expression.symbol.SymbolVisitors;
 import io.crate.metadata.DocReferences;
 import io.crate.metadata.Reference;
@@ -117,7 +113,7 @@ public class Collect implements LogicalPlan {
         this.numExpectedRows = numExpectedRows;
         this.estimatedRowSize = estimatedRowSize;
         if (where.hasQuery() && !(relation instanceof DocTableRelation)) {
-            NoPredicateVisitor.ensureNoMatchPredicate(where.queryOrFallback());
+            EnsureNoMatchPredicate.ensureNoMatchPredicate(where.queryOrFallback(), "Cannot use MATCH on system tables");
         }
         this.relation = relation;
         this.where = where;
@@ -315,31 +311,4 @@ public class Collect implements LogicalPlan {
         return preferSourceLookup;
     }
 
-    private static final class NoPredicateVisitor extends SymbolVisitor<Void, Void> {
-
-        private static final NoPredicateVisitor NO_PREDICATE_VISITOR = new NoPredicateVisitor();
-
-        private NoPredicateVisitor() {
-        }
-
-        static void ensureNoMatchPredicate(Symbol symbolTree) {
-            symbolTree.accept(NO_PREDICATE_VISITOR, null);
-        }
-
-        @Override
-        public Void visitMatchPredicate(io.crate.expression.symbol.MatchPredicate matchPredicate, Void context) {
-            throw new UnsupportedFeatureException("Cannot use match predicate on system tables");
-        }
-
-        @Override
-        public Void visitFunction(Function symbol, Void context) {
-            if (symbol.info().ident().name().equals(MatchPredicate.NAME)) {
-                throw new UnsupportedFeatureException("Cannot use match predicate on system tables");
-            }
-            for (Symbol argument : symbol.arguments()) {
-                argument.accept(this, context);
-            }
-            return null;
-        }
-    }
 }
