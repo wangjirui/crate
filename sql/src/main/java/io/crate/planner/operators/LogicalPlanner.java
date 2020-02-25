@@ -111,7 +111,6 @@ public class LogicalPlanner {
     private final Optimizer optimizer;
     private final TableStats tableStats;
     private final Visitor statementVisitor = new Visitor();
-    private final Functions functions;
     private final Optimizer writeOptimizer;
 
     public LogicalPlanner(Functions functions, TableStats tableStats, Supplier<Version> minNodeVersionInCluster) {
@@ -146,7 +145,6 @@ public class LogicalPlanner {
             minNodeVersionInCluster
         );
         this.tableStats = tableStats;
-        this.functions = functions;
     }
 
     public LogicalPlan plan(AnalyzedStatement statement, PlannerContext plannerContext) {
@@ -226,33 +224,30 @@ public class LogicalPlanner {
                             Set<PlanHint> hints,
                             TableStats tableStats,
                             Row params) {
-        // TODO: With this change we could probably also follow up on trimming the AnalyzedRelation
-        // it would only contain `outputs` and the other properties would only be available
-        // in the specific implementations
         var planBuilder = new PlanBuilder(
+            subqueryPlanner,
             txnCtx,
             hints,
             tableStats,
             params
         );
-        return MultiPhase.createIfNeeded(
-            relation.accept(planBuilder, relation.outputs()),
-            relation,
-            subqueryPlanner
-        );
+        return relation.accept(planBuilder, relation.outputs());
     }
 
     static class PlanBuilder extends AnalyzedRelationVisitor<List<Symbol>, LogicalPlan> {
 
+        private final SubqueryPlanner subqueryPlanner;
         private final CoordinatorTxnCtx txnCtx;
         private final Set<PlanHint> hints;
         private final TableStats tableStats;
         private final Row params;
 
-        private PlanBuilder(CoordinatorTxnCtx txnCtx,
+        private PlanBuilder(SubqueryPlanner subqueryPlanner,
+                            CoordinatorTxnCtx txnCtx,
                             Set<PlanHint> hints,
                             TableStats tableStats,
                             Row params) {
+            this.subqueryPlanner = subqueryPlanner;
             this.txnCtx = txnCtx;
             this.hints = hints;
             this.tableStats = tableStats;
@@ -266,7 +261,11 @@ public class LogicalPlanner {
 
         @Override
         public LogicalPlan visitTableFunctionRelation(TableFunctionRelation relation, List<Symbol> outputs) {
-            return TableFunction.create(relation, outputs, WhereClause.MATCH_ALL);
+            return MultiPhase.createIfNeeded(
+                TableFunction.create(relation, outputs, WhereClause.MATCH_ALL),
+                relation,
+                subqueryPlanner
+            );
         }
 
         @Override
@@ -354,7 +353,7 @@ public class LogicalPlanner {
                 txnCtx.sessionContext().isHashJoinEnabled()
             );
             HavingClause having = relation.having();
-            return
+            return MultiPhase.createIfNeeded(
                 Eval.create(
                     Limit.create(
                         Order.create(
@@ -384,7 +383,10 @@ public class LogicalPlanner {
                         relation.offset()
                     ),
                     outputs
-                );
+                ),
+                relation,
+                subqueryPlanner
+            );
         }
     }
 
