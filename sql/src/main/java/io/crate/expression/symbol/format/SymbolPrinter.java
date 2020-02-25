@@ -31,6 +31,7 @@ import io.crate.expression.predicate.NotPredicate;
 import io.crate.expression.scalar.ExtractFunctions;
 import io.crate.expression.scalar.SubscriptFunction;
 import io.crate.expression.scalar.SubscriptObjectFunction;
+import io.crate.expression.scalar.SubscriptRecordFunction;
 import io.crate.expression.scalar.arithmetic.ArithmeticFunctions;
 import io.crate.expression.scalar.cast.CastFunctionResolver;
 import io.crate.expression.scalar.systeminformation.CurrentSchemaFunction;
@@ -174,6 +175,10 @@ public final class SymbolPrinter {
                     printSubscriptFunction(function);
                     break;
 
+                case SubscriptRecordFunction.NAME:
+                    printSubscriptRecord(function);
+                    break;
+
                 case "current_user":
                     builder.append("CURRENT_USER");
                     break;
@@ -238,6 +243,13 @@ public final class SymbolPrinter {
                     }
             }
             return null;
+        }
+
+        private void printSubscriptRecord(Function function) {
+            builder.append("(");
+            function.arguments().get(0).accept(this, null);
+            builder.append(").");
+            function.arguments().get(1).accept(this, null);
         }
 
         private void printExtract(Function function) {
@@ -359,6 +371,7 @@ public final class SymbolPrinter {
         public Void visitWindowFunction(WindowFunction symbol, Void context) {
             return visitFunction(symbol, context);
         }
+
 
         @Override
         public Void visitReference(Reference symbol, Void context) {

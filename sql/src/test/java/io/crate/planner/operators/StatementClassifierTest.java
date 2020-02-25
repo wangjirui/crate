@@ -50,7 +50,7 @@ public class StatementClassifierTest extends CrateDummyClusterServiceUnitTest {
         LogicalPlan plan = e.logicalPlan("SELECT 1");
         StatementClassifier.Classification classification = StatementClassifier.classify(plan);
         assertThat(classification.type(), is(Plan.StatementType.SELECT));
-        assertThat(classification.labels(), contains("TableFunction"));
+        assertThat(classification.labels(), contains("Eval", "TableFunction"));
 
         plan = e.logicalPlan("SELECT * FROM users WHERE id = 1");
         classification = StatementClassifier.classify(plan);
@@ -90,7 +90,7 @@ public class StatementClassifierTest extends CrateDummyClusterServiceUnitTest {
         plan = e.logicalPlan("SELECT * FROM users WHERE id = (SELECT 1) OR name = (SELECT 'Arthur')");
         classification = StatementClassifier.classify(plan);
         assertThat(classification.type(), is(Plan.StatementType.SELECT));
-        assertThat(classification.labels(), contains("Limit", "MultiPhase", "TableFunction"));
+        assertThat(classification.labels(), contains("Eval", "Limit", "MultiPhase", "TableFunction"));
     }
 
 

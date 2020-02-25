@@ -142,12 +142,12 @@ and ``-0`` (signed zero).
 
 ::
 
-    cr> SELECT 0.0 / 0.0, 1.0 / 0.0, 1.0 / -0.0;
-    +-------------+-------------+---------------+
-    | (0.0 / 0.0) | (1.0 / 0.0) | (1.0 / - 0.0) |
-    +-------------+-------------+---------------+
-    | NaN         | Infinity    | -Infinity     |
-    +-------------+-------------+---------------+
+    cr> SELECT 0.0 / 0.0 AS a, 1.0 / 0.0 as B, 1.0 / -0.0 AS c;
+    +-----+----------+-----------+
+    | a   | b        | c         |
+    +-----+----------+-----------+
+    | NaN | Infinity | -Infinity |
+    +-----+----------+-----------+
     SELECT 1 row in set (... sec)
 
 These special numeric values can also be inserted into a column of type
@@ -288,7 +288,7 @@ the epoch with milliseconds as fractions.
 
 ::
 
-    cr> select 1.0::timestamp with time zone;
+    cr> select 1.0::timestamp with time zone AS ts;
     +---------------------------------------+
     | CAST(1.0 AS timestamp with time zone) |
     +---------------------------------------+

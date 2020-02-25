@@ -897,4 +897,44 @@ public class SelectPlannerTest extends CrateDummyClusterServiceUnitTest {
             "]\n";
         assertThat(plan, isPlan(e.functions(), expectedPlan));
     }
+
+    @Test
+    public void test_window_function_with_function_used_in_order_by_injects_eval_below_window_agg_ordering() {
+        // `WindowProjector.createUpdateProbeValueFunction` doesn't support function evaluation
+        // because it is not using the InputFactory to evaluate the order by expressions
+        // Injecting an Eval operator as a workaround
+        String stmt =
+            "SELECT\n" +
+            "   col1,\n" +
+            "   sum(col1) OVER(ORDER BY power(col1, 2) RANGE BETWEEN 3 PRECEDING and CURRENT ROW)\n" +
+            "FROM\n" +
+            "   unnest(ARRAY[2.5, 4, 5, 6, 7.5, 8.5, 10, 12]) as t(col1)";
+        LogicalPlan plan = e.logicalPlan(stmt);
+        String expectedPlan =
+            "RootBoundary[col1, sum(col1)]\n" +
+            "Eval[col1, sum(col1)]\n" +
+            "WindowAgg[sum(col1) | ORDER BY power(col1, 2.0) ASC]\n" +
+            "Eval[col1, power(col1, 2.0)]\n" +
+            "Rename[col1] AS t\n" +
+            "TableFunction[unnest | [col1] | true]\n";
+        assertThat(plan, isPlan(e.functions(), expectedPlan));
+    }
+
+    @Test
+    public void test_select_from_table_function_with_filter_on_not_selected_column() {
+        String stmt =
+            "SELECT word " +
+            "FROM pg_catalog.pg_get_keywords() " +
+            "WHERE catcode = 'R' " +
+            "ORDER BY 1";
+        LogicalPlan plan = e.logicalPlan(stmt);
+        String expectedPlan =
+            "RootBoundary[word]\n" +
+            "Eval[word]\n" +
+            "OrderBy[word ASC]\n" +
+            "Filter[(catcode = 'R')]\n" +
+            "TableFunction[pg_get_keywords | [word, catcode, catdesc] | true]\n";
+        assertThat(plan, isPlan(e.functions(), expectedPlan));
+
+    }
 }

@@ -265,7 +265,7 @@ public class LogicalPlanner {
             // `TableFunctionRelation` is also used for top-level `VALUES`
             //    -> so there wouldn't be a `QueriedSelectRelation` that can do the MultiPhase handling
             return MultiPhase.createIfNeeded(
-                TableFunction.create(relation, outputs, WhereClause.MATCH_ALL),
+                TableFunction.create(relation, relation.outputs(), WhereClause.MATCH_ALL),
                 relation,
                 subqueryPlanner
             );

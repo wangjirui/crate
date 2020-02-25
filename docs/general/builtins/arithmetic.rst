@@ -34,7 +34,7 @@ operator   description
 
 Below is an example using all available arithmetic operators::
 
-    cr> select ((2 * 4.0 - 2 + 1) / 2) % 3;
+    cr> select ((2 * 4.0 - 2 + 1) / 2) % 3 AS n;
     +-----------------------------------+
     | (((((2 * 4.0) - 2) + 1) / 2) % 3) |
     +-----------------------------------+
