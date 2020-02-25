@@ -31,6 +31,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
 
 import static org.hamcrest.Matchers.contains;
@@ -73,8 +74,8 @@ public class JoinOrderingTest {
     public void testOptimizeJoinNoPresort() throws Exception {
         Collection<RelationName> qualifiedNames = JoinOrdering.orderByJoinConditions(
             Arrays.asList(T3.T1, T3.T2, T3.T3),
-            Set.of(Set.of(T3.T1, T3.T2)),
-            Set.of(Set.of(T3.T2, T3.T3))
+            Set.of(Sets.newLinkedHashSet(List.of(T3.T1, T3.T2))),
+            Set.of(Sets.newLinkedHashSet(List.of(T3.T2, T3.T3)))
         );
         assertThat(qualifiedNames, contains(T3.T1, T3.T2, T3.T3));
     }
