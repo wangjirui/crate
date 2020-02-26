@@ -365,16 +365,6 @@ public class DDLIntegrationTest extends SQLTransportIntegrationTest {
     }
 
     @Test
-    public void testCreateTableWithColumnCheck() {
-        expectedException.expectMessage("Failed CONSTRAINT check_1 CHECK (\"qty\" > 100)");
-        execute("create table t (" +
-                "id integer primary key, " +
-                "qty integer constraint check_1 check(qty > 100)" +
-                ")");
-        execute("insert into t(id, qty) values(1, -1)");
-    }
-
-    @Test
     public void testAlterTable() throws Exception {
         execute("create table test (col1 int) with (number_of_replicas='0-all')");
         ensureYellow();

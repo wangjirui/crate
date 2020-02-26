@@ -33,15 +33,15 @@ import java.util.function.Function;
 
 public class CheckColumnConstraint<T> extends ColumnConstraint<T> {
 
-    private final String userDefinedName;
+    private final String name;
     private final String columnName;
     private final Expression expression;
     private final String expressionStr;
 
-    public CheckColumnConstraint(@Nullable String userDefinedName,
+    public CheckColumnConstraint(@Nullable String name,
                                  @Nullable String columnName,
                                  Expression expression) {
-        this.userDefinedName = userDefinedName;
+        this.name = name;
         this.columnName = columnName;
         this.expression = expression;
         this.expressionStr = ExpressionFormatter.formatStandaloneExpression(expression);
@@ -51,8 +51,8 @@ public class CheckColumnConstraint<T> extends ColumnConstraint<T> {
         return columnName;
     }
 
-    public String userDefinedName() {
-        return userDefinedName;
+    public String name() {
+        return name;
     }
 
     public Expression expression() {
@@ -65,7 +65,7 @@ public class CheckColumnConstraint<T> extends ColumnConstraint<T> {
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(userDefinedName, columnName, expression);
+        return Objects.hashCode(name, columnName, expression);
     }
 
     @Override
@@ -79,7 +79,7 @@ public class CheckColumnConstraint<T> extends ColumnConstraint<T> {
         CheckColumnConstraint that = (CheckColumnConstraint) o;
         return Objects.equal(expression, that.expression) &&
                Objects.equal(columnName, that.columnName) &&
-               Objects.equal(userDefinedName, that.userDefinedName);
+               Objects.equal(name, that.name);
     }
 
     @Override
@@ -89,7 +89,7 @@ public class CheckColumnConstraint<T> extends ColumnConstraint<T> {
 
     @Override
     public <U> ColumnConstraint<U> map(Function<? super T, ? extends U> mapper) {
-        return new CheckColumnConstraint<>(userDefinedName, columnName, expression);
+        return new CheckColumnConstraint<>(name, columnName, expression);
     }
 
     @Override
@@ -99,7 +99,7 @@ public class CheckColumnConstraint<T> extends ColumnConstraint<T> {
     @Override
     public String toString() {
         return MoreObjects.toStringHelper(this)
-            .add("name", userDefinedName)
+            .add("name", name)
             .add("column", columnName)
             .add("expression", expressionStr)
             .toString();

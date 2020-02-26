@@ -25,6 +25,7 @@ import com.google.common.collect.ImmutableSet;
 import io.crate.execution.engine.collect.files.SqlFeatureContext;
 import io.crate.execution.engine.collect.files.SqlFeaturesIterable;
 import io.crate.expression.reference.information.ColumnContext;
+import io.crate.expression.symbol.AnalyzedCheckConstraint;
 import io.crate.expression.udf.UserDefinedFunctionsMetaData;
 import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.FulltextAnalyzerResolver;
@@ -376,11 +377,11 @@ public class InformationSchemaIterables implements ClusterStateListener {
 
     static class CheckConstraintIterator implements Iterator<ConstraintInfo> {
         private final RelationInfo info;
-        private final Iterator<String> checkConstraints;
+        private final Iterator<AnalyzedCheckConstraint> checkConstraints;
 
         CheckConstraintIterator(RelationInfo info) {
             this.info = info;
-            checkConstraints = info.checkConstraints().keySet().iterator();
+            checkConstraints = info.checkConstraints().iterator();
         }
 
         @Override
@@ -393,7 +394,7 @@ public class InformationSchemaIterables implements ClusterStateListener {
             if (!hasNext()) {
                 throw new NoSuchElementException("Check constraint iterator exhausted");
             }
-            return new ConstraintInfo(info, checkConstraints.next(), ConstraintInfo.Type.CHECK);
+            return new ConstraintInfo(info, checkConstraints.next().name(), ConstraintInfo.Type.CHECK);
         }
     }
 

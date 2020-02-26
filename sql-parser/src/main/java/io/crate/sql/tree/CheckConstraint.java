@@ -32,19 +32,19 @@ import java.util.function.Function;
 
 public class CheckConstraint<T> extends TableElement<T> {
 
-    private final String userDefinedName;
+    private final String name;
     private final Expression expression;
     private final String expressionStr;
 
-    public CheckConstraint(@Nullable String userDefinedName,
+    public CheckConstraint(@Nullable String name,
                            Expression expression) {
-        this.userDefinedName = userDefinedName;
+        this.name = name;
         this.expression = expression;
         this.expressionStr = ExpressionFormatter.formatStandaloneExpression(expression);
     }
 
-    public String userDefinedName() {
-        return userDefinedName;
+    public String name() {
+        return name;
     }
 
     public Expression expression() {
@@ -57,7 +57,7 @@ public class CheckConstraint<T> extends TableElement<T> {
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(userDefinedName, expression);
+        return Objects.hashCode(name, expression);
     }
 
     @Override
@@ -70,7 +70,7 @@ public class CheckConstraint<T> extends TableElement<T> {
         }
         CheckConstraint that = (CheckConstraint) o;
         return Objects.equal(expression, that.expression) &&
-               Objects.equal(userDefinedName, that.userDefinedName);
+               Objects.equal(name, that.name);
     }
 
     @Override
@@ -80,7 +80,7 @@ public class CheckConstraint<T> extends TableElement<T> {
 
     @Override
     public <U> TableElement<U> map(Function<? super T, ? extends U> mapper) {
-        return new CheckConstraint<>(userDefinedName, expression);
+        return new CheckConstraint(name, expression);
     }
 
     @Override
@@ -90,7 +90,7 @@ public class CheckConstraint<T> extends TableElement<T> {
     @Override
     public String toString() {
         return MoreObjects.toStringHelper(this)
-            .add("name", userDefinedName)
+            .add("name", name)
             .add("expression", expressionStr)
             .toString();
     }

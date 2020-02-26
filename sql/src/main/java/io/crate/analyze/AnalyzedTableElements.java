@@ -590,11 +590,11 @@ public class AnalyzedTableElements<T> {
     }
 
     public void addCheckConstraint(RelationName relationName, CheckConstraint check) {
-        addCheckConstraint(relationName.fqn(), null, check.userDefinedName(), check.expressionStr());
+        addCheckConstraint(relationName.fqn(), null, check.name(), check.expressionStr());
     }
 
     public void addCheckColumnConstraint(RelationName relationName, CheckColumnConstraint check) {
-        addCheckConstraint(relationName.fqn(), check.columnName(), check.userDefinedName(), check.expressionStr());
+        addCheckConstraint(relationName.fqn(), check.columnName(), check.name(), check.expressionStr());
     }
 
     public boolean hasGeneratedColumns() {

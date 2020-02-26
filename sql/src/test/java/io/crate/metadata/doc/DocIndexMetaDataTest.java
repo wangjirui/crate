@@ -12,6 +12,7 @@ import io.crate.analyze.CreateTableStatementAnalyzer;
 import io.crate.analyze.NumberOfShards;
 import io.crate.analyze.ParamTypeHints;
 import io.crate.data.Row;
+import io.crate.expression.symbol.AnalyzedCheckConstraint;
 import io.crate.expression.udf.UserDefinedFunctionService;
 import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.CoordinatorTxnCtx;
@@ -686,18 +687,30 @@ public class DocIndexMetaDataTest extends CrateDummyClusterServiceUnitTest {
             .startObject(Constants.DEFAULT_MAPPING_TYPE)
             .startObject("_meta")
             .startObject("check_constraints")
-            .field("test3_check_1", "col1 >= 0")
-            .field("test3_check_2", "col2 != 'UNAVAILABLE'")
+            .field("test3_check_1", "id >= 0")
+            .field("test3_check_2", "title != 'Pink Power Ranger'")
             .endObject()
+            .endObject()
+            .startObject("properties")
+            .startObject("id").field("type", "integer").endObject()
+            .startObject("title").field("type", "string").endObject()
             .endObject()
             .endObject()
             .endObject();
         IndexMetaData metaData = getIndexMetaData("test3", builder);
         DocIndexMetaData md = newMeta(metaData, "test3");
-
         assertThat(md.checkConstraints().size(), is(2));
-        assertThat(md.checkConstraints().get("test3_check_1"), is(SqlParser.createExpression("col1 >= 0")));
-        assertThat(md.checkConstraints().get("test3_check_2"), is(SqlParser.createExpression("col2 != 'UNAVAILABLE'")));
+        for (AnalyzedCheckConstraint chk : md.checkConstraints()) {
+            switch (chk.name()) {
+                case "test3_check_1":
+                    assertThat(chk.expression(), is(SqlParser.createExpression("id >= 0")));
+                    break;
+
+                case "test3_check_2":
+                    assertThat(chk.expression(), is(SqlParser.createExpression("title <> 'Pink Power Ranger'")));
+                    break;
+            }
+        }
     }
 
     @Test
@@ -722,7 +735,6 @@ public class DocIndexMetaDataTest extends CrateDummyClusterServiceUnitTest {
         DocIndexMetaData md = newMeta(metaData, "test_no_pk");
         assertThat(md.primaryKey().size(), is(1));
         assertThat(md.primaryKey(), hasItems(ColumnIdent.fromPath("_id")));
-
 
         builder = XContentFactory.jsonBuilder()
             .startObject()

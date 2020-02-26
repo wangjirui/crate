@@ -802,13 +802,13 @@ public final class SqlFormatter {
 
         @Override
         public Void visitCheckConstraint(CheckConstraint<?> node, Integer indent) {
-            visitCheckConstraint(node.userDefinedName(), node.expressionStr(), indent);
+            visitCheckConstraint(node.name(), node.expressionStr(), indent);
             return null;
         }
 
         @Override
         public Void visitCheckColumnConstraint(CheckColumnConstraint<?> node, Integer indent) {
-            visitCheckConstraint(node.userDefinedName(), node.expressionStr(), indent);
+            visitCheckConstraint(node.name(), node.expressionStr(), indent);
             return null;
         }
 

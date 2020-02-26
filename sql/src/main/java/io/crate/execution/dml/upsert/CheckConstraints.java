@@ -22,21 +22,16 @@
 
 package io.crate.execution.dml.upsert;
 
-import io.crate.analyze.ParamTypeHints;
-import io.crate.analyze.expressions.ExpressionAnalysisContext;
-import io.crate.analyze.expressions.ExpressionAnalyzer;
-import io.crate.analyze.expressions.TableReferenceResolver;
 import io.crate.data.Input;
 import io.crate.execution.engine.collect.CollectExpression;
 import io.crate.expression.InputFactory;
 import io.crate.expression.reference.Doc;
 import io.crate.expression.reference.ReferenceResolver;
+import io.crate.expression.symbol.AnalyzedCheckConstraint;
 import io.crate.metadata.ColumnIdent;
-import io.crate.metadata.CoordinatorTxnCtx;
 import io.crate.metadata.Reference;
 import io.crate.metadata.TransactionContext;
 import io.crate.metadata.doc.DocTableInfo;
-import io.crate.sql.ExpressionFormatter;
 import org.elasticsearch.common.collect.Tuple;
 
 import java.util.ArrayList;
@@ -66,28 +61,12 @@ public final class CheckConstraints<T, E extends CollectExpression<T, ?>> {
             inputs.add(ctx.add(notNullRef));
         }
         expressions = ctx.expressions();
-        checkConstraints = initializeCheckConstraints(table, inputFactory, ctx);
-    }
-
-    private Map<String, Tuple<Input<?>, String>> initializeCheckConstraints(DocTableInfo table,
-                                                                            InputFactory inputFactory,
-                                                                            InputFactory.Context<E> ctx) {
-        ExpressionAnalyzer analyzer = new ExpressionAnalyzer(
-            inputFactory.getFunctions(),
-            CoordinatorTxnCtx.systemTransactionContext(),
-            ParamTypeHints.EMPTY,
-            new TableReferenceResolver(table.getReferences().values(), table.ident()),
-            null);
-        ExpressionAnalysisContext analysisCtx = new ExpressionAnalysisContext();
-        return table
+        checkConstraints = table
             .checkConstraints()
-            .entrySet()
             .stream()
             .collect(Collectors.toMap(
-                Map.Entry::getKey,
-                chk -> new Tuple<>(
-                    ctx.add(analyzer.convert(chk.getValue(), analysisCtx)),
-                    ExpressionFormatter.formatStandaloneExpression(chk.getValue()))
+                AnalyzedCheckConstraint::name,
+                chk -> new Tuple<>(ctx.add(chk.function()), chk.expressionStr())
             ));
     }
 
@@ -107,15 +86,19 @@ public final class CheckConstraints<T, E extends CollectExpression<T, ?>> {
             }
         }
         for (Map.Entry<String, Tuple<Input<?>, String>> checkEntry : checkConstraints.entrySet()) {
-            Boolean value = (Boolean) checkEntry.getValue().v1().value();
+            Input<?> checkInput = checkEntry.getValue().v1();
+            Boolean value = (Boolean) checkInput.value();
+            if (null == value) {
+                continue;
+            }
             if (!value.booleanValue()) {
-                String constraintName = checkEntry.getKey();
-                String checkExpression = checkEntry.getValue().v2();
+                String checkName = checkEntry.getKey();
+                String checkExpr = checkEntry.getValue().v2();
                 Object offendingValues = values instanceof Doc ? ((Doc) values).getSource() : values;
                 throw new IllegalArgumentException(String.format(
                     Locale.ENGLISH,
                     "Failed CONSTRAINT %s CHECK (%s) and values %s",
-                    constraintName, checkExpression, offendingValues));
+                    checkName, checkExpr, offendingValues));
             }
         }
     }
