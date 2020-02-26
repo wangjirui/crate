@@ -522,5 +522,5 @@ def load_tests(loader, suite, ignore):
         raise ValueError("ITEST_FILE_NAME_FILTER, no matches for: {}".format(ITEST_FILE_NAME_FILTER))
 
     # randomize order of tests to make sure they don't depend on each other
-    # random.shuffle(tests)
+    random.shuffle(tests)
     return DocTests(tests)
