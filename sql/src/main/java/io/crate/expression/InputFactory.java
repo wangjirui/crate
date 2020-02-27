@@ -78,10 +78,6 @@ public class InputFactory {
         this.functions = functions;
     }
 
-    public Functions getFunctions() {
-        return functions;
-    }
-
     public <T extends Input<?>> Context<T> ctxForRefs(TransactionContext txnCtx, ReferenceResolver<? extends T> referenceResolver) {
         List<T> expressions = new ArrayList<>();
         return new Context<>(
