@@ -21,7 +21,6 @@
 
 package io.crate.integrationtests;
 
-import com.carrotsearch.randomizedtesting.annotations.Seed;
 import com.google.common.collect.ImmutableMap;
 import io.crate.action.sql.SQLActionException;
 import io.crate.metadata.PartitionName;
@@ -43,6 +42,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static io.crate.testing.TestingHelpers.printedTable;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.$;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.core.Is.is;
@@ -337,11 +337,7 @@ public class DDLIntegrationTest extends SQLTransportIntegrationTest {
         refresh();
         execute("select id, qty from t order by id");
         assertEquals(2, response.rowCount());
-        Object [][] rows = response.rows();
-        assertEquals(0, rows[0][0]);
-        assertNull(rows[0][1]);
-        assertEquals(1, rows[1][0]);
-        assertEquals(1, rows[1][1]);
+        assertEquals(printedTable(response.rows()), "0| NULL\n1| 1\n");
         expectedException.expectMessage(containsString("Failed CONSTRAINT check_1 CHECK (\"qty\" > 0) and values"));
         execute("insert into t(id, qty) values(2, -1)");
     }
@@ -353,14 +349,10 @@ public class DDLIntegrationTest extends SQLTransportIntegrationTest {
         refresh();
         execute("select id, qty from t order by id");
         assertEquals(1, response.rowCount());
-        Object [][] rows = response.rows();
-        assertEquals(0, rows[0][0]);
-        assertEquals(1, rows[0][1]);
+        assertEquals(printedTable(response.rows()), "0| 1\n");
         execute("update t set qty = 1 where id = 0 returning id, qty");
         assertEquals(1, response.rowCount());
-        rows = response.rows();
-        assertEquals(0, rows[0][0]);
-        assertEquals(1, rows[0][1]);
+        assertEquals(printedTable(response.rows()), "0| 1\n");
         expectedException.expectMessage(containsString("Failed CONSTRAINT check_1 CHECK (\"qty\" > 0) and values"));
         execute("update t set qty = -1 where id = 0");
     }
