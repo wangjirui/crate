@@ -34,13 +34,13 @@ public class CheckConstraint<T> extends TableElement<T> {
 
     @Nullable
     private final String name;
-    private final Expression expression;
+    private final T expression;
     private final String expressionStr;
 
-    public CheckConstraint(@Nullable String name, Expression expression) {
+    public CheckConstraint(@Nullable String name, T expression) {
         this.name = name;
         this.expression = expression;
-        this.expressionStr = ExpressionFormatter.formatStandaloneExpression(expression);
+        this.expressionStr = ExpressionFormatter.formatStandaloneExpression((Expression) expression);
     }
 
     @Nullable
@@ -48,7 +48,7 @@ public class CheckConstraint<T> extends TableElement<T> {
         return name;
     }
 
-    public Expression expression() {
+    public T expression() {
         return expression;
     }
 
@@ -86,6 +86,7 @@ public class CheckConstraint<T> extends TableElement<T> {
 
     @Override
     public void visit(Consumer<? super T> consumer) {
+        consumer.accept(expression);
     }
 
     @Override

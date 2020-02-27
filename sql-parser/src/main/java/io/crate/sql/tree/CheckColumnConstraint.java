@@ -36,14 +36,14 @@ public class CheckColumnConstraint<T> extends ColumnConstraint<T> {
     @Nullable
     private final String name;
     private final String columnName;
-    private final Expression expression;
+    private final T expression;
     private final String expressionStr;
 
-    public CheckColumnConstraint(@Nullable String name, String columnName, Expression expression) {
+    public CheckColumnConstraint(@Nullable String name, String columnName, T expression) {
         this.name = name;
         this.columnName = columnName;
         this.expression = expression;
-        this.expressionStr = ExpressionFormatter.formatStandaloneExpression(expression);
+        this.expressionStr = ExpressionFormatter.formatStandaloneExpression((Expression) expression);
     }
 
     public String columnName() {
@@ -55,7 +55,7 @@ public class CheckColumnConstraint<T> extends ColumnConstraint<T> {
         return name;
     }
 
-    public Expression expression() {
+    public T expression() {
         return expression;
     }
 
@@ -89,11 +89,12 @@ public class CheckColumnConstraint<T> extends ColumnConstraint<T> {
 
     @Override
     public <U> ColumnConstraint<U> map(Function<? super T, ? extends U> mapper) {
-        return new CheckColumnConstraint<>(name, columnName, expression);
+        return new CheckColumnConstraint(name, columnName, expression);
     }
 
     @Override
     public void visit(Consumer<? super T> consumer) {
+        consumer.accept(expression);
     }
 
     @Override
