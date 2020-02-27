@@ -32,17 +32,18 @@ import java.util.function.Function;
 
 public class CheckConstraint<T> extends TableElement<T> {
 
+    @Nullable
     private final String name;
     private final Expression expression;
     private final String expressionStr;
 
-    public CheckConstraint(@Nullable String name,
-                           Expression expression) {
+    public CheckConstraint(@Nullable String name, Expression expression) {
         this.name = name;
         this.expression = expression;
         this.expressionStr = ExpressionFormatter.formatStandaloneExpression(expression);
     }
 
+    @Nullable
     public String name() {
         return name;
     }

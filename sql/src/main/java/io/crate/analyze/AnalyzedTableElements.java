@@ -566,7 +566,7 @@ public class AnalyzedTableElements<T> {
         return columns;
     }
 
-    private static String uniqueCheckConstraintName(String fqTableName, String columnName) {
+    private static String uniqueCheckConstraintName(String fqTableName, @Nullable String columnName) {
         StringBuilder sb = new StringBuilder(fqTableName.replaceAll("\\.", "_"));
         if (columnName != null) {
             sb.append("_").append(columnName);
@@ -578,7 +578,10 @@ public class AnalyzedTableElements<T> {
         return sb.toString();
     }
 
-    private void addCheckConstraint(String fqRelationName, String columnName, String name, String expressionStr) {
+    private void addCheckConstraint(String fqRelationName,
+                                    @Nullable String columnName,
+                                    @Nullable String name,
+                                    String expressionStr) {
         if (null == name) {
             name = uniqueCheckConstraintName(fqRelationName, columnName);
         }

@@ -33,14 +33,13 @@ import java.util.function.Function;
 
 public class CheckColumnConstraint<T> extends ColumnConstraint<T> {
 
+    @Nullable
     private final String name;
     private final String columnName;
     private final Expression expression;
     private final String expressionStr;
 
-    public CheckColumnConstraint(@Nullable String name,
-                                 @Nullable String columnName,
-                                 Expression expression) {
+    public CheckColumnConstraint(@Nullable String name, String columnName, Expression expression) {
         this.name = name;
         this.columnName = columnName;
         this.expression = expression;
@@ -51,6 +50,7 @@ public class CheckColumnConstraint<T> extends ColumnConstraint<T> {
         return columnName;
     }
 
+    @Nullable
     public String name() {
         return name;
     }
