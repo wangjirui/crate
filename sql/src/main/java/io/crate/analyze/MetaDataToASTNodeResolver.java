@@ -99,10 +99,7 @@ public class MetaDataToASTNodeResolver {
             if (pk != null) elements.add(pk);
             // index definitions
             elements.addAll(extractIndexDefinitions());
-            // check constraints
-            if (!tableInfo.checkConstraints().isEmpty()) {
-                elements.addAll(tableInfo.checkConstraints());
-            }
+            elements.addAll(tableInfo.checkConstraints());
             return elements;
         }
 

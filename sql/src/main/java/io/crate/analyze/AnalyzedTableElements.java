@@ -585,11 +585,10 @@ public class AnalyzedTableElements<T> {
         if (null == name) {
             name = uniqueCheckConstraintName(fqRelationName, columnName);
         }
-        if (checkConstraints.get(name) != null) {
+        if (checkConstraints.put(name, expressionStr) != null) {
             throw new IllegalArgumentException(String.format(
                 Locale.ENGLISH, "a check constraint of the same name is already declared [%s]", name));
         }
-        checkConstraints.put(name, expressionStr);
     }
 
     public void addCheckConstraint(RelationName relationName, CheckConstraint check) {
