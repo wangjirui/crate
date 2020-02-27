@@ -94,7 +94,6 @@ public class CheckColumnConstraint<T> extends ColumnConstraint<T> {
 
     @Override
     public void visit(Consumer<? super T> consumer) {
-        consumer.accept(expression);
     }
 
     @Override

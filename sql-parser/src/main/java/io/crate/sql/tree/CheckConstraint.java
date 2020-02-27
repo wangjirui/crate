@@ -86,7 +86,6 @@ public class CheckConstraint<T> extends TableElement<T> {
 
     @Override
     public void visit(Consumer<? super T> consumer) {
-        consumer.accept(expression);
     }
 
     @Override
