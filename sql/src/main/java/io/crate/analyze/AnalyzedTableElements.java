@@ -568,7 +568,7 @@ public class AnalyzedTableElements<T> {
 
     private static String uniqueCheckConstraintName(String fqTableName, String columnName) {
         StringBuilder sb = new StringBuilder(fqTableName.replaceAll("\\.", "_"));
-        if (null != columnName) {
+        if (columnName != null) {
             sb.append("_").append(columnName);
         }
         sb.append("_check_");
@@ -582,7 +582,7 @@ public class AnalyzedTableElements<T> {
         if (null == name) {
             name = uniqueCheckConstraintName(fqRelationName, columnName);
         }
-        if (null != checkConstraints.get(name)) {
+        if (checkConstraints.get(name) != null) {
             throw new IllegalArgumentException(String.format(
                 Locale.ENGLISH, "a check constraint of the same name is already declared [%s]", name));
         }

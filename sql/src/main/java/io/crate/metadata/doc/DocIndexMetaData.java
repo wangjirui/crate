@@ -590,9 +590,9 @@ public class DocIndexMetaData {
 
         ImmutableList.Builder<AnalyzedCheckConstraint> checkConstraintsBuilder = null;
         Map<String, Object> metaMap = Maps.get(mappingMap, "_meta");
-        if (null != metaMap) {
+        if (metaMap != null) {
             Map<String, String> checkConstraintsMap = Maps.get(metaMap, "check_constraints");
-            if (null != checkConstraintsMap) {
+            if (checkConstraintsMap != null) {
                 checkConstraintsBuilder = ImmutableList.builder();
                 for (Map.Entry<String, String> entry : checkConstraintsMap.entrySet()) {
                     String name = entry.getKey();
@@ -602,7 +602,7 @@ public class DocIndexMetaData {
                 }
             }
         }
-        checkConstraints = null != checkConstraintsBuilder ? checkConstraintsBuilder.build() : ImmutableList.of();
+        checkConstraints = checkConstraintsBuilder != null ? checkConstraintsBuilder.build() : ImmutableList.of();
 
         for (Reference reference : generatedColumnReferences) {
             GeneratedReference generatedReference = (GeneratedReference) reference;

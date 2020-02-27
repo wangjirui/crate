@@ -794,7 +794,7 @@ public final class SqlFormatter {
         }
 
         private void visitCheckConstraint(String name, String expr, Integer indent) {
-            if (null != name) {
+            if (name != null) {
                 builder.append("CONSTRAINT ").append(name).append(" ");
             }
             builder.append("CHECK(").append(expr).append(")");

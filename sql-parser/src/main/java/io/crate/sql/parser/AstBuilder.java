@@ -790,7 +790,7 @@ class AstBuilder extends SqlBaseBaseVisitor<Node> {
 
     private Node visitCheckConstraint(SqlBaseParser.CheckConstraintContext ctx, String columnName) {
         String name = null;
-        if (null != ctx.CONSTRAINT()) {
+        if (ctx.CONSTRAINT() != null) {
             name = getIdentText(ctx.name);
         }
         Expression expression = (Expression) visit(ctx.expression);
