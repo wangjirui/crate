@@ -638,7 +638,7 @@ public class DocIndexMetaData {
         return notNullColumns;
     }
 
-    ImmutableList<AnalyzedCheckConstraint> checkConstraints() {
+    List<AnalyzedCheckConstraint> checkConstraints() {
         return checkConstraints;
     }
 
