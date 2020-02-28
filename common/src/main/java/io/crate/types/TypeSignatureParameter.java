@@ -20,38 +20,50 @@
  * agreement.
  */
 
-package io.crate.expression.scalar.arithmetic;
+package io.crate.types;
 
-import io.crate.expression.scalar.AbstractScalarFunctionsTest;
-import org.junit.Test;
+import java.util.Objects;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import static java.util.Objects.requireNonNull;
 
-public class MapFunctionTest extends AbstractScalarFunctionsTest {
+public class TypeSignatureParameter {
 
-    @Test
-    public void testMapWithWrongNumOfArguments() {
-        expectedException.expect(UnsupportedOperationException.class);
-        expectedException.expectMessage("unknown function: _map(text, bigint, text)");
-        assertEvaluate("_map('foo', 1, 'bar')", null);
+    private final TypeSignature value;
+
+    public static TypeSignatureParameter of(TypeSignature typeSignature) {
+        return new TypeSignatureParameter(typeSignature);
     }
 
-    @Test
-    public void testKeyNotOfTypeString() {
-        assertEvaluate("_map(10, 2)", Collections.singletonMap("10", 2L));
+    private TypeSignatureParameter(TypeSignature value) {
+        this.value = requireNonNull(value, "value is null");
     }
 
-    @Test
-    public void testEvaluation() {
-        Map<String, Object> m = new HashMap<>();
-        m.put("foo", 10L);
-        // minimum args
-        assertEvaluate("_map('foo', 10)", m);
-
-        // variable args
-        m.put("bar", "some");
-        assertEvaluate("_map('foo', 10, 'bar', 'some')", m);
+    @Override
+    public String toString() {
+        return value.toString();
     }
+
+    public TypeSignature getTypeSignature() {
+        return value;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        TypeSignatureParameter other = (TypeSignatureParameter) o;
+
+        return Objects.equals(this.value, other.value);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(value);
+    }
+
 }

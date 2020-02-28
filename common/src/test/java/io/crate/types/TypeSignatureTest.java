@@ -20,38 +20,32 @@
  * agreement.
  */
 
-package io.crate.expression.scalar.arithmetic;
+package io.crate.types;
 
-import io.crate.expression.scalar.AbstractScalarFunctionsTest;
+import io.crate.test.integration.CrateUnitTest;
 import org.junit.Test;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import static io.crate.types.TypeSignature.parseTypeSignature;
+import static org.hamcrest.Matchers.is;
 
-public class MapFunctionTest extends AbstractScalarFunctionsTest {
+public class TypeSignatureTest extends CrateUnitTest {
 
     @Test
-    public void testMapWithWrongNumOfArguments() {
-        expectedException.expect(UnsupportedOperationException.class);
-        expectedException.expectMessage("unknown function: _map(text, bigint, text)");
-        assertEvaluate("_map('foo', 1, 'bar')", null);
+    public void testParsingOfPrimitiveDataTypes() {
+        for (var type : DataTypes.PRIMITIVE_TYPES) {
+            assertThat(parseTypeSignature(type.getName()), is(type.getTypeSignature()));
+        }
     }
 
     @Test
-    public void testKeyNotOfTypeString() {
-        assertEvaluate("_map(10, 2)", Collections.singletonMap("10", 2L));
+    public void testParsingOfArray() {
+        ArrayType<Integer> integerArrayType = new ArrayType<>(IntegerType.INSTANCE);
+        assertThat(parseTypeSignature("array(integer)"), is(integerArrayType.getTypeSignature()));
     }
 
     @Test
-    public void testEvaluation() {
-        Map<String, Object> m = new HashMap<>();
-        m.put("foo", 10L);
-        // minimum args
-        assertEvaluate("_map('foo', 10)", m);
-
-        // variable args
-        m.put("bar", "some");
-        assertEvaluate("_map('foo', 10, 'bar', 'some')", m);
+    public void testParsingOfObject() {
+        ObjectType objectType = ObjectType.builder().setInnerType("V", IntegerType.INSTANCE).build();
+        assertThat(parseTypeSignature("object(text, integer)"), is(objectType.getTypeSignature()));
     }
 }
