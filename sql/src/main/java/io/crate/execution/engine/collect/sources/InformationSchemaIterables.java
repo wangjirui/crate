@@ -25,7 +25,6 @@ import com.google.common.collect.ImmutableSet;
 import io.crate.execution.engine.collect.files.SqlFeatureContext;
 import io.crate.execution.engine.collect.files.SqlFeaturesIterable;
 import io.crate.expression.reference.information.ColumnContext;
-import io.crate.expression.symbol.AnalyzedCheckConstraint;
 import io.crate.expression.udf.UserDefinedFunctionsMetaData;
 import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.FulltextAnalyzerResolver;
@@ -124,9 +123,11 @@ public class InformationSchemaIterables implements ClusterStateListener {
 
         Iterable<ConstraintInfo> checkConstraints = () ->
             sequentialStream(relations)
-            .filter(i -> !i.checkConstraints().isEmpty())
-            .flatMap(r -> sequentialStream(new CheckConstraintIterable(r)))
-            .iterator();
+                .filter(r -> !r.checkConstraints().isEmpty())
+                .flatMap(r -> r.checkConstraints()
+                    .stream()
+                    .map(chk -> new ConstraintInfo(r, chk.name(), ConstraintInfo.Type.CHECK)))
+                .iterator();
 
         constraints = () -> Stream.of(sequentialStream(primaryKeyConstraints),
                                       sequentialStream(notnullConstraints),
@@ -358,43 +359,6 @@ public class InformationSchemaIterables implements ClusterStateListener {
                 constraintName,
                 ConstraintInfo.Type.CHECK
             );
-        }
-    }
-
-    static class CheckConstraintIterable implements Iterable<ConstraintInfo> {
-
-        private final RelationInfo info;
-
-        CheckConstraintIterable(RelationInfo info) {
-            this.info = info;
-        }
-
-        @Override
-        public Iterator<ConstraintInfo> iterator() {
-            return new CheckConstraintIterator(info);
-        }
-    }
-
-    static class CheckConstraintIterator implements Iterator<ConstraintInfo> {
-        private final RelationInfo info;
-        private final Iterator<AnalyzedCheckConstraint> checkConstraints;
-
-        CheckConstraintIterator(RelationInfo info) {
-            this.info = info;
-            checkConstraints = info.checkConstraints().iterator();
-        }
-
-        @Override
-        public boolean hasNext() {
-            return checkConstraints.hasNext();
-        }
-
-        @Override
-        public ConstraintInfo next() {
-            if (!hasNext()) {
-                throw new NoSuchElementException("Check constraint iterator exhausted");
-            }
-            return new ConstraintInfo(info, checkConstraints.next().name(), ConstraintInfo.Type.CHECK);
         }
     }
 
