@@ -688,7 +688,7 @@ public class DocIndexMetaDataTest extends CrateDummyClusterServiceUnitTest {
             .startObject("_meta")
             .startObject("check_constraints")
             .field("test3_check_1", "id >= 0")
-            .field("test3_check_2", "title != 'Pink Power Ranger'")
+            .field("test3_check_2", "title != 'Programming Clojure'")
             .endObject()
             .endObject()
             .startObject("properties")
@@ -700,17 +700,14 @@ public class DocIndexMetaDataTest extends CrateDummyClusterServiceUnitTest {
         IndexMetaData metaData = getIndexMetaData("test3", builder);
         DocIndexMetaData md = newMeta(metaData, "test3");
         assertThat(md.checkConstraints().size(), is(2));
-        for (AnalyzedCheckConstraint chk : md.checkConstraints()) {
-            switch (chk.name()) {
-                case "test3_check_1":
-                    assertThat(chk.expression(), is(SqlParser.createExpression("id >= 0")));
-                    break;
-
-                case "test3_check_2":
-                    assertThat(chk.expression(), is(SqlParser.createExpression("title <> 'Pink Power Ranger'")));
-                    break;
-            }
-        }
+        assertThat(md.checkConstraints()
+                       .stream()
+                       .map(AnalyzedCheckConstraint::expression)
+                       .collect(Collectors.toList()),
+                   Matchers.containsInAnyOrder(
+                       is(SqlParser.createExpression("id >= 0")),
+                       is(SqlParser.createExpression("title <> 'Programming Clojure'"))
+        ));
     }
 
     @Test
