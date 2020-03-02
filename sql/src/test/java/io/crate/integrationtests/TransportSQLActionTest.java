@@ -1313,6 +1313,7 @@ public class TransportSQLActionTest extends SQLTransportIntegrationTest {
     }
 
     @Test
+    @UseJdbc(0)
     public void testWithinQuery() throws Exception {
         execute("create table t (id int primary key, p geo_point) " +
                 "clustered into 1 shards " +
