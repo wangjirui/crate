@@ -124,7 +124,7 @@ public class InformationSchemaIterables implements ClusterStateListener {
 
         Iterable<ConstraintInfo> checkConstraints = () ->
             sequentialStream(relations)
-            .filter(i -> i != null && !i.checkConstraints().isEmpty())
+            .filter(i -> !i.checkConstraints().isEmpty())
             .flatMap(r -> sequentialStream(new CheckConstraintIterable(r)))
             .iterator();
 
