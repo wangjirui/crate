@@ -23,7 +23,6 @@ package io.crate.sql.tree;
 
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
-import io.crate.sql.ExpressionFormatter;
 
 import javax.annotation.Nullable;
 import java.util.function.Consumer;
@@ -37,10 +36,10 @@ public class CheckConstraint<T> extends TableElement<T> {
     private final T expression;
     private final String expressionStr;
 
-    public CheckConstraint(@Nullable String name, T expression) {
+    public CheckConstraint(@Nullable String name, T expression, String expressionStr) {
         this.name = name;
         this.expression = expression;
-        this.expressionStr = ExpressionFormatter.formatStandaloneExpression((Expression) expression);
+        this.expressionStr = expressionStr;
     }
 
     @Nullable
@@ -81,7 +80,7 @@ public class CheckConstraint<T> extends TableElement<T> {
 
     @Override
     public <U> TableElement<U> map(Function<? super T, ? extends U> mapper) {
-        return new CheckConstraint(name, expression);
+        return new CheckConstraint(name, expression, expressionStr);
     }
 
     @Override

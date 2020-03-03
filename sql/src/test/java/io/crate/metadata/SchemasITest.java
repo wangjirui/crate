@@ -25,11 +25,11 @@ import com.carrotsearch.hppc.IntIndexedContainer;
 import com.google.common.collect.Sets;
 import io.crate.action.sql.SessionContext;
 import io.crate.analyze.WhereClause;
-import io.crate.expression.symbol.AnalyzedCheckConstraint;
+import io.crate.expression.symbol.Symbol;
 import io.crate.integrationtests.SQLTransportIntegrationTest;
 import io.crate.metadata.doc.DocTableInfo;
 import io.crate.metadata.table.TableInfo;
-import io.crate.sql.parser.SqlParser;
+import io.crate.sql.tree.CheckConstraint;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.Randomness;
 import org.elasticsearch.test.ESIntegTestCase;
@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.isOneOf;
 import static org.hamcrest.core.Is.is;
 
@@ -73,10 +74,10 @@ public class SchemasITest extends SQLTransportIntegrationTest {
         assertThat(ti.primaryKey().size(), is(1));
         assertThat(ti.primaryKey().get(0), is(new ColumnIdent("id")));
         assertThat(ti.clusteredBy(), is(new ColumnIdent("id")));
-        List<AnalyzedCheckConstraint> checkConstraints = ti.checkConstraints();
+        List<CheckConstraint<Symbol>> checkConstraints = ti.checkConstraints();
         assertEquals(checkConstraints.size(), 1);
         assertEquals(checkConstraints.get(0).name(), "not_miguel");
-        assertThat(checkConstraints.get(0).expression(), is(SqlParser.createExpression("name != 'miguel'")));
+        assertThat(checkConstraints.get(0).expressionStr(), equalTo("\"name\" <> 'miguel'"));
 
         ClusterService clusterService = clusterService();
         Routing routing = ti.getRouting(

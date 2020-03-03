@@ -23,8 +23,9 @@
 package io.crate.metadata;
 
 import com.google.common.collect.ImmutableList;
-import io.crate.expression.symbol.AnalyzedCheckConstraint;
+import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.table.Operation;
+import io.crate.sql.tree.CheckConstraint;
 
 import java.util.Collection;
 import java.util.List;
@@ -62,7 +63,7 @@ public interface RelationInfo extends Iterable<Reference> {
 
     List<ColumnIdent> primaryKey();
 
-    default List<AnalyzedCheckConstraint> checkConstraints() {
+    default List<CheckConstraint<Symbol>> checkConstraints() {
         return ImmutableList.of();
     }
 

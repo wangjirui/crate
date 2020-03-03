@@ -27,11 +27,11 @@ import io.crate.execution.engine.collect.CollectExpression;
 import io.crate.expression.InputFactory;
 import io.crate.expression.reference.Doc;
 import io.crate.expression.reference.ReferenceResolver;
-import io.crate.expression.symbol.AnalyzedCheckConstraint;
 import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.Reference;
 import io.crate.metadata.TransactionContext;
 import io.crate.metadata.doc.DocTableInfo;
+import io.crate.sql.tree.CheckConstraint;
 import org.elasticsearch.common.collect.Tuple;
 
 import java.util.ArrayList;
@@ -65,8 +65,8 @@ public final class CheckConstraints<T, E extends CollectExpression<T, ?>> {
             .checkConstraints()
             .stream()
             .collect(Collectors.toMap(
-                AnalyzedCheckConstraint::name,
-                chk -> new Tuple<>(ctx.add(chk.function()), chk.expressionStr())
+                CheckConstraint::name,
+                chk -> new Tuple<>(ctx.add(chk.expression()), chk.expressionStr())
             ));
     }
 

@@ -12,7 +12,6 @@ import io.crate.analyze.CreateTableStatementAnalyzer;
 import io.crate.analyze.NumberOfShards;
 import io.crate.analyze.ParamTypeHints;
 import io.crate.data.Row;
-import io.crate.expression.symbol.AnalyzedCheckConstraint;
 import io.crate.expression.udf.UserDefinedFunctionService;
 import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.CoordinatorTxnCtx;
@@ -27,6 +26,7 @@ import io.crate.metadata.view.ViewInfoFactory;
 import io.crate.planner.node.ddl.CreateTablePlan;
 import io.crate.planner.operators.SubQueryResults;
 import io.crate.sql.parser.SqlParser;
+import io.crate.sql.tree.CheckConstraint;
 import io.crate.sql.tree.ColumnPolicy;
 import io.crate.sql.tree.CreateTable;
 import io.crate.sql.tree.Expression;
@@ -702,11 +702,11 @@ public class DocIndexMetaDataTest extends CrateDummyClusterServiceUnitTest {
         assertThat(md.checkConstraints().size(), is(2));
         assertThat(md.checkConstraints()
                        .stream()
-                       .map(AnalyzedCheckConstraint::expression)
+                       .map(CheckConstraint::expressionStr)
                        .collect(Collectors.toList()),
-                   Matchers.containsInAnyOrder(
-                       is(SqlParser.createExpression("id >= 0")),
-                       is(SqlParser.createExpression("title <> 'Programming Clojure'"))
+                   containsInAnyOrder(
+                       equalTo("id >= 0"),
+                       equalTo("title != 'Programming Clojure'")
         ));
     }
 

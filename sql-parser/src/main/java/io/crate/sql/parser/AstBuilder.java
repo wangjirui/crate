@@ -26,6 +26,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.LinkedListMultimap;
 import com.google.common.collect.Multimap;
 import io.crate.common.collections.Lists2;
+import io.crate.sql.ExpressionFormatter;
 import io.crate.sql.parser.antlr.v4.SqlBaseBaseVisitor;
 import io.crate.sql.parser.antlr.v4.SqlBaseLexer;
 import io.crate.sql.parser.antlr.v4.SqlBaseParser;
@@ -793,7 +794,8 @@ class AstBuilder extends SqlBaseBaseVisitor<Node> {
         SqlBaseParser.CheckConstraintContext ctx = context.checkConstraint();
         String name = ctx.CONSTRAINT() != null ? getIdentText(ctx.name) : null;
         Expression expression = (Expression) visit(ctx.expression);
-        return new CheckConstraint<>(name, expression);
+        String expressionStr = ExpressionFormatter.formatStandaloneExpression(expression);
+        return new CheckConstraint<>(name, expression, expressionStr);
     }
 
     @Override
