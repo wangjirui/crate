@@ -25,7 +25,6 @@ package io.crate.execution.dml.upsert;
 import io.crate.data.Input;
 import io.crate.execution.engine.collect.CollectExpression;
 import io.crate.expression.InputFactory;
-import io.crate.expression.reference.Doc;
 import io.crate.expression.reference.ReferenceResolver;
 import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.Reference;
@@ -94,11 +93,10 @@ public final class CheckConstraints<T, E extends CollectExpression<T, ?>> {
             if (!value.booleanValue()) {
                 String checkName = checkEntry.getKey();
                 String checkExpr = checkEntry.getValue().v2();
-                Object offendingValues = values instanceof Doc ? ((Doc) values).getSource() : values;
                 throw new IllegalArgumentException(String.format(
                     Locale.ENGLISH,
                     "Failed CONSTRAINT %s CHECK (%s) and values %s",
-                    checkName, checkExpr, offendingValues));
+                    checkName, checkExpr, values));
             }
         }
     }
