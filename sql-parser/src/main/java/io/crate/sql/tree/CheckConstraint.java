@@ -33,12 +33,12 @@ public class CheckConstraint<T> extends TableElement<T> {
 
     @Nullable
     private final String name;
-    private final T expression;
+    private final T exprOrSymbol;
     private final String expressionStr;
 
-    public CheckConstraint(@Nullable String name, T expression, String expressionStr) {
+    public CheckConstraint(@Nullable String name, T exprOrSymbol, String expressionStr) {
         this.name = name;
-        this.expression = expression;
+        this.exprOrSymbol = exprOrSymbol;
         this.expressionStr = expressionStr;
     }
 
@@ -47,8 +47,8 @@ public class CheckConstraint<T> extends TableElement<T> {
         return name;
     }
 
-    public T expression() {
-        return expression;
+    public T cargo() {
+        return exprOrSymbol;
     }
 
     public String expressionStr() {
@@ -57,7 +57,7 @@ public class CheckConstraint<T> extends TableElement<T> {
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(name, expression);
+        return Objects.hashCode(name, exprOrSymbol);
     }
 
     @Override
@@ -69,7 +69,7 @@ public class CheckConstraint<T> extends TableElement<T> {
             return false;
         }
         CheckConstraint that = (CheckConstraint) o;
-        return Objects.equal(expression, that.expression) &&
+        return Objects.equal(exprOrSymbol, that.exprOrSymbol) &&
                Objects.equal(name, that.name);
     }
 
@@ -80,7 +80,7 @@ public class CheckConstraint<T> extends TableElement<T> {
 
     @Override
     public <U> TableElement<U> map(Function<? super T, ? extends U> mapper) {
-        return new CheckConstraint(name, expression, expressionStr);
+        return new CheckConstraint(name, exprOrSymbol, expressionStr);
     }
 
     @Override
