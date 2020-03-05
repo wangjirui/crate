@@ -28,7 +28,6 @@ import javax.annotation.Nullable;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-
 public class CheckConstraint<T> extends TableElement<T> {
 
     @Nullable
@@ -85,7 +84,7 @@ public class CheckConstraint<T> extends TableElement<T> {
 
     @Override
     public void visit(Consumer<? super T> consumer) {
-        consumer.accept(expression);
+        // intentionally left empty
     }
 
     @Override
