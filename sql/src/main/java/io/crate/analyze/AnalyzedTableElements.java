@@ -582,7 +582,7 @@ public class AnalyzedTableElements<T> {
                                     @Nullable String columnName,
                                     @Nullable String name,
                                     String expressionStr) {
-        if (null == name) {
+        if (name == null) {
             name = uniqueCheckConstraintName(fqRelationName, columnName);
         }
         if (checkConstraints.put(name, expressionStr) != null) {

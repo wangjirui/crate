@@ -64,7 +64,7 @@ public class CheckConstraint<T> extends TableElement<T> {
         if (this == o) {
             return true;
         }
-        if (null == o || false == o instanceof CheckConstraint) {
+        if (o == null || false == o instanceof CheckConstraint) {
             return false;
         }
         CheckConstraint that = (CheckConstraint) o;
