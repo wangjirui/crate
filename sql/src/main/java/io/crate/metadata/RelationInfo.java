@@ -64,7 +64,7 @@ public interface RelationInfo extends Iterable<Reference> {
     List<ColumnIdent> primaryKey();
 
     default List<CheckConstraint<Symbol>> checkConstraints() {
-        return ImmutableList.of();
+        return List.of();
     }
 
     Map<String, Object> parameters();
