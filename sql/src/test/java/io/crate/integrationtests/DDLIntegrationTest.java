@@ -336,8 +336,9 @@ public class DDLIntegrationTest extends SQLTransportIntegrationTest {
         execute("insert into t(id, qty) values(0, null), (1, 1)");
         refresh();
         execute("select id, qty from t order by id");
-        assertEquals(2, response.rowCount());
-        assertEquals(printedTable(response.rows()), "0| NULL\n1| 1\n");
+        assertEquals(printedTable(response.rows()),
+                     "0| NULL\n" +
+                     "1| 1\n");
         expectedException.expectMessage(containsString("Failed CONSTRAINT check_1 CHECK (\"qty\" > 0) and values"));
         execute("insert into t(id, qty) values(2, -1)");
     }
@@ -348,10 +349,8 @@ public class DDLIntegrationTest extends SQLTransportIntegrationTest {
         execute("insert into t(id, qty) values(0, 1)");
         refresh();
         execute("select id, qty from t order by id");
-        assertEquals(1, response.rowCount());
         assertEquals(printedTable(response.rows()), "0| 1\n");
         execute("update t set qty = 1 where id = 0 returning id, qty");
-        assertEquals(1, response.rowCount());
         assertEquals(printedTable(response.rows()), "0| 1\n");
         expectedException.expectMessage(containsString("Failed CONSTRAINT check_1 CHECK (\"qty\" > 0) and values"));
         execute("update t set qty = -1 where id = 0");
