@@ -65,7 +65,7 @@ public final class CheckConstraints<T, E extends CollectExpression<T, ?>> {
             .stream()
             .collect(Collectors.toMap(
                 CheckConstraint::name,
-                chk -> new Tuple<>(ctx.add(chk.cargo()), chk.expressionStr())
+                chk -> new Tuple<>(ctx.add(chk.expression()), chk.expressionStr())
             ));
     }
 
