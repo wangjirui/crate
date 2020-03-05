@@ -24,12 +24,10 @@ package io.crate.sql.tree;
 
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
-import io.crate.sql.ExpressionFormatter;
 
 import javax.annotation.Nullable;
 import java.util.function.Consumer;
 import java.util.function.Function;
-
 
 public class CheckColumnConstraint<T> extends ColumnConstraint<T> {
 
@@ -39,11 +37,11 @@ public class CheckColumnConstraint<T> extends ColumnConstraint<T> {
     private final T expression;
     private final String expressionStr;
 
-    public CheckColumnConstraint(@Nullable String name, String columnName, T expression) {
+    public CheckColumnConstraint(@Nullable String name, String columnName, T expression, String expressionStr) {
         this.name = name;
         this.columnName = columnName;
         this.expression = expression;
-        this.expressionStr = ExpressionFormatter.formatStandaloneExpression((Expression) expression);
+        this.expressionStr = expressionStr;
     }
 
     public String columnName() {
@@ -89,7 +87,7 @@ public class CheckColumnConstraint<T> extends ColumnConstraint<T> {
 
     @Override
     public <U> ColumnConstraint<U> map(Function<? super T, ? extends U> mapper) {
-        return new CheckColumnConstraint(name, columnName, expression);
+        return new CheckColumnConstraint(name, columnName, expression, expressionStr);
     }
 
     @Override

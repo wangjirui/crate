@@ -805,7 +805,8 @@ class AstBuilder extends SqlBaseBaseVisitor<Node> {
         Expression expression = (Expression) visit(ctx.expression);
         SqlBaseParser.ColumnDefinitionContext columnCtx = (SqlBaseParser.ColumnDefinitionContext) context.parent;
         String columnName = getIdentText(columnCtx.ident());
-        return new CheckColumnConstraint<>(name, columnName, expression);
+        String expressionStr = ExpressionFormatter.formatStandaloneExpression(expression);
+        return new CheckColumnConstraint<>(name, columnName, expression, expressionStr);
     }
 
     @Override
