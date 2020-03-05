@@ -26,6 +26,7 @@ import io.crate.data.Input;
 import io.crate.execution.engine.collect.CollectExpression;
 import io.crate.expression.InputFactory;
 import io.crate.expression.reference.ReferenceResolver;
+import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.Reference;
 import io.crate.metadata.TransactionContext;
@@ -44,7 +45,7 @@ public final class CheckConstraints<T, E extends CollectExpression<T, ?>> {
     private final List<Input<?>> inputs = new ArrayList<>();
     private final List<E> expressions;
     private final List<ColumnIdent> notNullColumns;
-    private final Map<String, Tuple<Input<?>, String>> checkConstraints;
+    private final List<Tuple<? extends Input<?>, CheckConstraint<Symbol>>> checkConstraints;
 
     CheckConstraints(TransactionContext txnCtx,
                      InputFactory inputFactory,
@@ -63,10 +64,8 @@ public final class CheckConstraints<T, E extends CollectExpression<T, ?>> {
         checkConstraints = table
             .checkConstraints()
             .stream()
-            .collect(Collectors.toMap(
-                CheckConstraint::name,
-                chk -> new Tuple<>(ctx.add(chk.expression()), chk.expressionStr())
-            ));
+            .map(chk -> new Tuple<>(ctx.add(chk.expression()), chk))
+            .collect(Collectors.toList());
     }
 
     /**
@@ -84,19 +83,19 @@ public final class CheckConstraints<T, E extends CollectExpression<T, ?>> {
                 throw new IllegalArgumentException("\"" + notNullColumns.get(i) + "\" must not be null");
             }
         }
-        for (Map.Entry<String, Tuple<Input<?>, String>> checkEntry : checkConstraints.entrySet()) {
-            Input<?> checkInput = checkEntry.getValue().v1();
+        for (int i = 0; i < checkConstraints.size(); i++) {
+            Tuple<? extends Input<?>, CheckConstraint<Symbol>> checkEntry = checkConstraints.get(i);
+            Input<?> checkInput = checkEntry.v1();
             Boolean value = (Boolean) checkInput.value();
             if (null == value) {
                 continue;
             }
             if (!value.booleanValue()) {
-                String checkName = checkEntry.getKey();
-                String checkExpr = checkEntry.getValue().v2();
+                CheckConstraint<Symbol> chk = checkEntry.v2();
                 throw new IllegalArgumentException(String.format(
                     Locale.ENGLISH,
                     "Failed CONSTRAINT %s CHECK (%s) and values %s",
-                    checkName, checkExpr, values));
+                    chk.name(), chk.expressionStr(), values));
             }
         }
     }
