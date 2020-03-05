@@ -22,7 +22,6 @@
 
 package io.crate.metadata;
 
-import com.google.common.collect.ImmutableList;
 import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.table.Operation;
 import io.crate.sql.tree.CheckConstraint;
