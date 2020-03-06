@@ -28,7 +28,6 @@ import io.crate.analyze.AnalyzedStatementVisitor;
 import io.crate.analyze.OrderBy;
 import io.crate.analyze.QueriedSelectRelation;
 import io.crate.analyze.WhereClause;
-import io.crate.analyze.relations.AbstractTableRelation;
 import io.crate.analyze.relations.AliasedAnalyzedRelation;
 import io.crate.analyze.relations.AnalyzedRelation;
 import io.crate.analyze.relations.AnalyzedRelationVisitor;
@@ -283,16 +282,9 @@ public class LogicalPlanner {
         @Override
         public LogicalPlan visitAliasedAnalyzedRelation(AliasedAnalyzedRelation relation, List<Symbol> outputs) {
             var child = relation.relation();
-            if (child instanceof AbstractTableRelation<?>) {
-                List<Symbol> mappedOutputs = Lists2.map(outputs, FieldReplacer.bind(relation::resolveField));
-                var source = child.accept(this, mappedOutputs);
-                return new Rename(outputs, relation.relationName(), relation, source);
-            } else {
-                // Can't do outputs propagation because field reverse resolving could be ambiguous
-                //  `SELECT * FROM (select * from t as t1, t as t2)` -> x can refer to t1.x or t2.x
-                var source = child.accept(this, child.outputs());
-                return new Rename(relation.outputs(), relation.relationName(), relation, source);
-            }
+            List<Symbol> mappedOutputs = Lists2.map(outputs, FieldReplacer.bind(relation::resolveField));
+            var source = child.accept(this, mappedOutputs);
+            return new Rename(outputs, relation.relationName(), relation, source);
         }
 
         @Override

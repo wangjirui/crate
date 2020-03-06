@@ -34,6 +34,7 @@ import io.crate.planner.ExecutionPlan;
 import io.crate.planner.PlannerContext;
 
 import javax.annotation.Nullable;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -64,11 +65,22 @@ public final class Rename extends ForwardingLogicalPlan implements FieldResolver
 
     public Rename(List<Symbol> outputs, RelationName name, FieldResolver fieldResolver, LogicalPlan source) {
         super(source);
+        /* Rename is supposed so be a 1:1 mapping - E.g. SELECT x, y FROM (select x, y, z ...) as t
+         * `as t` doesn't have a "selection".
+         *
+         * But we support eager "selection" propagation in the LogicalPlan builder, so the inner relation can return
+         * `[x, y]` instead of `[x, y, z]`,
+         *
+         * SELECT x > 1 FROM (select x, y, z ...) AS t
+         *  --> SELECT x > 1 FROM (select x > 1 ...) AS t
+         */
+        ArrayList<Symbol> adaptedOutputs = new ArrayList<>();
+        for (Symbol output : outputs) {
+            // fieldResolver.resolveField()
+        }
         this.outputs = outputs;
         this.name = name;
         this.fieldResolver = fieldResolver;
-        assert this.outputs.size() == source.outputs().size()
-            : "Rename operator must have exactly the same number of outputs as the source operator";
     }
 
     public RelationName name() {

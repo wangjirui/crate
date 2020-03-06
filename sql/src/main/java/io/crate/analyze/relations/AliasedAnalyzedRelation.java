@@ -34,6 +34,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -51,6 +52,9 @@ public class AliasedAnalyzedRelation implements AnalyzedRelation, FieldResolver 
     private final Map<ColumnIdent, ColumnIdent> aliasToColumnMapping;
     private final ArrayList<Symbol> outputs;
 
+    // TODO: fieldReplacer, etc. break this: A parent can create a new ScopedSymbol?
+    private final IdentityHashMap<Symbol, Symbol> parentToChildMapping = new IdentityHashMap<>();
+
     public AliasedAnalyzedRelation(AnalyzedRelation relation, RelationName alias) {
         this(relation, alias, List.of());
     }
@@ -63,14 +67,17 @@ public class AliasedAnalyzedRelation implements AnalyzedRelation, FieldResolver 
         for (int i = 0; i < relation.outputs().size(); i++) {
             Symbol childOutput = relation.outputs().get(i);
             ColumnIdent childColumn = Symbols.pathFromSymbol(childOutput);
+            final ScopedSymbol scopedSymbol;
             if (i < columnAliases.size()) {
                 ColumnIdent columnAlias = new ColumnIdent(columnAliases.get(i));
                 aliasToColumnMapping.put(columnAlias, childColumn);
-                outputs.add(new ScopedSymbol(this.alias, columnAlias, childOutput.valueType()));
+                scopedSymbol = new ScopedSymbol(this.alias, columnAlias, childOutput.valueType());
             } else {
                 aliasToColumnMapping.put(childColumn, childColumn);
-                outputs.add(new ScopedSymbol(alias, childColumn, childOutput.valueType()));
+                scopedSymbol = new ScopedSymbol(alias, childColumn, childOutput.valueType());
             }
+            outputs.add(scopedSymbol);
+            parentToChildMapping.put(scopedSymbol, childOutput);
         }
     }
 
@@ -84,9 +91,12 @@ public class AliasedAnalyzedRelation implements AnalyzedRelation, FieldResolver 
             return null;
         }
         Symbol field = relation.getField(childColumnName, operation);
-        return field == null
-            ? null
-            : new ScopedSymbol(alias, column, field.valueType());
+        if (field == null) {
+            return null;
+        }
+        ScopedSymbol scopedSymbol = new ScopedSymbol(alias, column, field.valueType());
+        parentToChildMapping.put(scopedSymbol, field);
+        return scopedSymbol;
     }
 
     public AnalyzedRelation relation() {
@@ -120,11 +130,10 @@ public class AliasedAnalyzedRelation implements AnalyzedRelation, FieldResolver 
         if (!field.relation().equals(alias)) {
             throw new IllegalArgumentException(field + " does not belong to " + relationName());
         }
-        ColumnIdent childColumnName = aliasToColumnMapping.get(field.column());
-        var result = relation.getField(childColumnName, Operation.READ);
-        if (result == null) {
+        Symbol child = parentToChildMapping.get(field);
+        if (child == null) {
             throw new IllegalArgumentException(field + " does not belong to " + relationName());
         }
-        return result;
+        return child;
     }
 }
