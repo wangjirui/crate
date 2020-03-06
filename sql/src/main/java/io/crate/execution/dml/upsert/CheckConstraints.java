@@ -83,8 +83,8 @@ public final class CheckConstraints<T, E extends CollectExpression<T, ?>> {
             Input<?> checkInput = checkEntry.v1();
             Boolean value = (Boolean) checkInput.value();
             if (value == null) {
-                // most expressions evaluate to null if any operand is null.
-                // a check expression will evaluate to true in these cases.
+                // SQL semantics: If a column is omitted from an INSERT/UPDATE statement,
+                // CHECK constraints should not fail. Same for writing explicit `null` values.
                 continue;
             }
             if (!value.booleanValue()) {
