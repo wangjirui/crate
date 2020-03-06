@@ -22,6 +22,7 @@
 
 package io.crate.execution.dml.upsert;
 
+import io.crate.common.collections.Lists2;
 import io.crate.data.Input;
 import io.crate.execution.engine.collect.CollectExpression;
 import io.crate.expression.InputFactory;
@@ -37,7 +38,6 @@ import org.elasticsearch.common.collect.Tuple;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.stream.Collectors;
 
 public final class CheckConstraints<T, E extends CollectExpression<T, ?>> {
 
@@ -60,11 +60,7 @@ public final class CheckConstraints<T, E extends CollectExpression<T, ?>> {
             inputs.add(ctx.add(notNullRef));
         }
         expressions = ctx.expressions();
-        checkConstraints = table
-            .checkConstraints()
-            .stream()
-            .map(chk -> new Tuple<>(ctx.add(chk.expression()), chk))
-            .collect(Collectors.toList());
+        checkConstraints = Lists2.map(table.checkConstraints(), chk -> new Tuple<>(ctx.add(chk.expression()), chk));
     }
 
     /**
