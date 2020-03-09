@@ -87,7 +87,7 @@ public class CheckColumnConstraint<T> extends ColumnConstraint<T> {
 
     @Override
     public <U> ColumnConstraint<U> map(Function<? super T, ? extends U> mapper) {
-        return new CheckColumnConstraint(name, columnName, expression, expressionStr);
+        return new CheckColumnConstraint(name, columnName, mapper.apply(expression), expressionStr);
     }
 
     @Override

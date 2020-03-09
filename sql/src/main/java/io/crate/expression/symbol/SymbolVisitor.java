@@ -70,6 +70,10 @@ public class SymbolVisitor<C, R> {
         return visitSymbol(fetchReference, context);
     }
 
+    public R visitColumnReference(ColumnReference columnReference, C context) {
+        return visitSymbol(columnReference, context);
+    }
+
     public R visitParameterSymbol(ParameterSymbol parameterSymbol, C context) {
         return visitSymbol(parameterSymbol, context);
     }

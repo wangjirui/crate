@@ -26,17 +26,24 @@ import io.crate.analyze.expressions.ExpressionAnalyzer;
 import io.crate.analyze.expressions.TableReferenceResolver;
 import io.crate.analyze.relations.FieldProvider;
 import io.crate.common.collections.Lists2;
+import io.crate.expression.symbol.ColumnReference;
 import io.crate.expression.symbol.Symbol;
+import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.CoordinatorTxnCtx;
 import io.crate.metadata.Functions;
 import io.crate.metadata.RelationName;
 import io.crate.planner.operators.EnsureNoMatchPredicate;
+import io.crate.sql.tree.ColumnDefinition;
 import io.crate.sql.tree.CreateTable;
 import io.crate.sql.tree.Expression;
 import io.crate.sql.tree.TableElement;
+import io.crate.types.DataType;
+import io.crate.types.DataTypes;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public final class CreateTableStatementAnalyzer {
 
@@ -59,10 +66,19 @@ public final class CreateTableStatementAnalyzer {
             functions, txnCtx, paramTypeHints, FieldProvider.FIELDS_AS_LITERAL, null);
         var exprCtx = new ExpressionAnalysisContext();
 
+        Map<String, DataType<?>> columnTypes = extractColumnTypes(createTable.tableElements());
+        FieldProvider<ColumnReference<?>> columnReferenceFieldProvider = (qualifiedName, path, operation) -> {
+            String colName = qualifiedName.toString();
+            DataType<?> type = columnTypes.get(colName);
+            return new ColumnReference<>(new ColumnIdent(colName, path).fqn(), type);
+        };
+        var exprAnalyzerWithFieldsAsColumnRefs = new ExpressionAnalyzer(
+            functions, txnCtx, paramTypeHints, columnReferenceFieldProvider, null);
+
         // 1st phase, map and analyze everything BESIDE generated and default expressions and
         CreateTable<Symbol> analyzedCreateTable = new CreateTable<>(
             createTable.name().map(x -> exprAnalyzerWithFieldsAsString.convert(x, exprCtx)),
-            Lists2.map(createTable.tableElements(), x -> x.map(y -> exprAnalyzerWithFieldsAsString.convert(y, exprCtx))),
+            Lists2.map(createTable.tableElements(), x -> x.map(y -> exprAnalyzerWithFieldsAsColumnRefs.convert(y, exprCtx))),
             createTable.partitionedBy().map(x -> x.map(y -> exprAnalyzerWithFieldsAsString.convert(y, exprCtx))),
             createTable.clusteredBy().map(x -> x.map(y -> exprAnalyzerWithFieldsAsString.convert(y, exprCtx))),
             createTable.properties().map(x -> exprAnalyzerWithoutFields.convert(x, exprCtx)),
@@ -93,5 +109,17 @@ public final class CreateTableStatementAnalyzer {
             analyzedTableElements,
             analyzedTableElementsWithExpressions
         );
+    }
+
+    private static Map<String, DataType<?>> extractColumnTypes(List<TableElement<Expression>> tableElements) {
+        Map<String, DataType<?>> columnTypes = new HashMap<>();
+        for (int i = 0; i < tableElements.size(); i++) {
+            TableElement<Expression> te = tableElements.get(i);
+            if (te instanceof ColumnDefinition) {
+                ColumnDefinition<Expression> def = (ColumnDefinition<Expression>) te;
+                columnTypes.put(def.ident(), DataTypes.ofName(def.type().name()));
+            }
+        }
+        return columnTypes;
     }
 }

@@ -79,7 +79,7 @@ public class CheckConstraint<T> extends TableElement<T> {
 
     @Override
     public <U> TableElement<U> map(Function<? super T, ? extends U> mapper) {
-        return new CheckConstraint(name, expression, expressionStr);
+        return new CheckConstraint(name, mapper.apply(expression), expressionStr);
     }
 
     @Override
