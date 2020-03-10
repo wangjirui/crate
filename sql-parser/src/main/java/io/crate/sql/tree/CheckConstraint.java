@@ -84,7 +84,7 @@ public class CheckConstraint<T> extends TableElement<T> {
 
     @Override
     public void visit(Consumer<? super T> consumer) {
-        // intentionally left empty
+        consumer.accept(expression);
     }
 
     @Override
