@@ -22,10 +22,20 @@
 
 package io.crate.execution.dml.upsert;
 
+import io.crate.analyze.ParamTypeHints;
+import io.crate.analyze.expressions.ExpressionAnalysisContext;
+import io.crate.analyze.expressions.ExpressionAnalyzer;
+import io.crate.analyze.relations.FieldProvider;
 import io.crate.expression.InputFactory;
+import io.crate.expression.symbol.Symbol;
 import io.crate.metadata.CoordinatorTxnCtx;
 import io.crate.metadata.TransactionContext;
 import io.crate.metadata.doc.DocTableInfo;
+import io.crate.sql.ExpressionFormatter;
+import io.crate.sql.parser.SqlParser;
+import io.crate.sql.tree.CheckConstraint;
+import io.crate.sql.tree.Expression;
+import io.crate.sql.tree.TableElement;
 import io.crate.test.integration.CrateDummyClusterServiceUnitTest;
 import io.crate.testing.SQLExecutor;
 import org.junit.Before;
@@ -104,6 +114,26 @@ public class CheckConstraintsTest extends CrateDummyClusterServiceUnitTest {
                       "    qty int," +
                       "    CONSTRAINT id_is_even CHECK(id % 2 = 0))")
             .build();
+    }
+
+    @Test
+    public void test_expression_analyzer_on_check_constraints_containing_fields() {
+        FieldProvider fieldProvider = FieldProvider.FIELDS_AS_LITERAL;
+        // ^ ^ the culprit
+
+        ExpressionAnalyzer analyzer = new ExpressionAnalyzer(
+            sqlExecutor.functions(),
+            (CoordinatorTxnCtx) txnCtx,
+            ParamTypeHints.EMPTY,
+            fieldProvider,
+            null);
+        ExpressionAnalysisContext exprAnalysisCtx = new ExpressionAnalysisContext();
+        Expression checkExpression = SqlParser.createExpression("qty >= 0");
+        String checkExpressionStr = ExpressionFormatter.formatExpression(checkExpression);
+        TableElement<Expression> checkConstraint = new CheckConstraint<>("chk1", checkExpression, checkExpressionStr);
+        TableElement<Symbol> checkConstraintSym = checkConstraint.map(y -> analyzer.convert(y, exprAnalysisCtx));
+        // ^ ^ boom!
+
     }
 
     private static Map<String, Object> mapOf(Object... items) {
