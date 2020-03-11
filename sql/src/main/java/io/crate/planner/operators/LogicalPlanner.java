@@ -220,7 +220,7 @@ public class LogicalPlanner {
         if (fetchPlanBuilder == null) {
             return prunedPlan;
         }
-        return fetchPlanBuilder.buildLogicalPlan();
+        return fetchPlanBuilder.newPlan();
     }
 
     static LogicalPlan plan(AnalyzedRelation relation,

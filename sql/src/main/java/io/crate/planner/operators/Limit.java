@@ -41,6 +41,8 @@ import io.crate.types.DataType;
 import io.crate.types.DataTypes;
 
 import javax.annotation.Nullable;
+
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -69,6 +71,24 @@ public class Limit extends ForwardingLogicalPlan {
 
     public Symbol limit() {
         return limit;
+    }
+
+    @Override
+    public FetchPlanBuilder rewriteForFetch(Collection<Symbol> usedOutputs) {
+        var fetchPlanBuilder = source.rewriteForFetch(usedOutputs);
+        if (fetchPlanBuilder == null) {
+            return null;
+        }
+        return new FetchPlanBuilder(
+            fetchPlanBuilder.replacements(),
+            new Fetch(
+                fetchPlanBuilder.previousPlan().outputs(),
+                fetchPlanBuilder.fetchRefs(),
+                fetchPlanBuilder.fetchSourceByRelation(),
+                new Limit(fetchPlanBuilder.newPlan(), limit, offset)
+            ),
+            this
+        );
     }
 
 
@@ -123,6 +143,7 @@ public class Limit extends ForwardingLogicalPlan {
         return new Limit(Lists2.getOnlyElement(sources), limit, offset);
     }
 
+
     @Override
     public Map<LogicalPlan, SelectSymbol> dependencies() {
         return source.dependencies();
@@ -131,7 +152,7 @@ public class Limit extends ForwardingLogicalPlan {
     @Override
     public long numExpectedRows() {
         if (limit instanceof Literal) {
-            return DataTypes.LONG.value(((Literal) limit).value());
+            return DataTypes.LONG.value(((Literal<?>) limit).value());
         }
         return source.numExpectedRows();
     }

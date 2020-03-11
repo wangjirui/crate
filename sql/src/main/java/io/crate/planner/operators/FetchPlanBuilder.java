@@ -22,27 +22,30 @@
 
 package io.crate.planner.operators;
 
-import java.util.function.Function;
-import java.util.function.Supplier;
+import java.util.Map;
+import io.crate.expression.symbol.Symbol;
 
 public final class FetchPlanBuilder {
 
-    public static class FetchRefs {
+    private final Map<Symbol, Symbol> replacements;
+    private final LogicalPlan newPlan;
+    private final LogicalPlan previousPlan;
 
+    public FetchPlanBuilder(Map<Symbol, Symbol> replacements, LogicalPlan newPlan, LogicalPlan previousPlan) {
+        this.replacements = replacements;
+        this.newPlan = newPlan;
+        this.previousPlan = previousPlan;
     }
 
-    public FetchPlanBuilder() {
+    public Map<Symbol, Symbol> replacements() {
+        return replacements;
     }
 
-    public FetchRefs fetchRefs() {
-        return null;
+    public LogicalPlan newPlan() {
+        return newPlan;
     }
 
-    public LogicalPlan buildLogicalPlan() {
-        return null;
-    }
-
-    public FetchPlanBuilder add(Function<LogicalPlan, LogicalPlan> addWithSource) {
-        return new FetchPlanBuilder();
+    public LogicalPlan previousPlan() {
+        return previousPlan;
     }
 }

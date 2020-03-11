@@ -27,6 +27,7 @@ import io.crate.analyze.OrderBy;
 import io.crate.analyze.WhereClause;
 import io.crate.analyze.relations.AbstractTableRelation;
 import io.crate.analyze.relations.DocTableRelation;
+import io.crate.analyze.relations.TableRelation;
 import io.crate.analyze.where.WhereClauseAnalyzer;
 import io.crate.common.collections.Lists2;
 import io.crate.data.Row;
@@ -41,8 +42,10 @@ import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.SymbolVisitors;
 import io.crate.metadata.DocReferences;
 import io.crate.metadata.Reference;
+import io.crate.metadata.ReferenceIdent;
 import io.crate.metadata.RoutingProvider;
 import io.crate.metadata.RowGranularity;
+import io.crate.metadata.doc.DocSysColumns;
 import io.crate.metadata.doc.DocTableInfo;
 import io.crate.metadata.table.TableInfo;
 import io.crate.planner.ExecutionPlan;
@@ -53,11 +56,13 @@ import io.crate.planner.distribution.DistributionInfo;
 import io.crate.planner.selectivity.SelectivityFunctions;
 import io.crate.statistics.Stats;
 import io.crate.statistics.TableStats;
+import io.crate.types.DataTypes;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -304,7 +309,41 @@ public class Collect implements LogicalPlan {
 
     @Override
     public FetchPlanBuilder rewriteForFetch(Collection<Symbol> usedOutputs) {
-        return null;
+        if (relation instanceof TableRelation) {
+            return null;
+        }
+        ArrayList<Symbol> newOutputs = new ArrayList<>();
+        Reference fetchRef = new Reference(
+            new ReferenceIdent(relation.relationName(), DocSysColumns.FETCHID),
+            RowGranularity.DOC,
+            DataTypes.LONG,
+            null,
+            null
+        );
+        HashMap<Symbol, Symbol> replacements = new HashMap<>();
+        for (var output : outputs) {
+            if (SymbolVisitors.any(output::equals, usedOutputs)) {
+                newOutputs.add(output);
+            } else {
+                replacements.put(output, fetchRef);
+            }
+        }
+        if (newOutputs.size() == outputs.size()) {
+            return null;
+        }
+        outputs.add(0, fetchRef);
+        return new FetchPlanBuilder(
+            replacements,
+            new Collect(
+                preferSourceLookup,
+                relation,
+                newOutputs,
+                where,
+                numExpectedRows,
+                estimatedRowSize
+            ),
+            this
+        );
     }
 
     @Override
