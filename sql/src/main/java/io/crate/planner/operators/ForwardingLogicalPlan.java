@@ -56,6 +56,15 @@ public abstract class ForwardingLogicalPlan implements LogicalPlan {
     }
 
     @Override
+    public FetchPlanBuilder rewriteForFetch(Collection<Symbol> usedOutputs) {
+        FetchPlanBuilder fetchPlanBuilder = source.rewriteForFetch(usedOutputs);
+        if (fetchPlanBuilder == null) {
+            return null;
+        }
+        return fetchPlanBuilder.add(newSource -> replaceSources(List.of(newSource)));
+    }
+
+    @Override
     public List<Symbol> outputs() {
         return source.outputs();
     }

@@ -215,7 +215,12 @@ public class LogicalPlanner {
             tableStats,
             plannerContext.params());
         LogicalPlan optimizedPlan = optimizer.optimize(logicalPlan, tableStats, coordinatorTxnCtx);
-        return optimizedPlan.pruneOutputsExcept(relation.outputs());
+        LogicalPlan prunedPlan = optimizedPlan.pruneOutputsExcept(relation.outputs());
+        FetchPlanBuilder fetchPlanBuilder = prunedPlan.rewriteForFetch(relation.outputs());
+        if (fetchPlanBuilder == null) {
+            return prunedPlan;
+        }
+        return fetchPlanBuilder.buildLogicalPlan();
     }
 
     static LogicalPlan plan(AnalyzedRelation relation,

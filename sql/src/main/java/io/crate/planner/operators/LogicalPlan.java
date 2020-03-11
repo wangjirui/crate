@@ -149,6 +149,14 @@ public interface LogicalPlan extends Plan {
     LogicalPlan pruneOutputsExcept(Collection<Symbol> outputsToKeep);
 
     /**
+     * TODO:
+     */
+    @Nullable
+    default FetchPlanBuilder rewriteForFetch(Collection<Symbol> usedOutputs) {
+        return null;
+    }
+
+    /**
      * SubQueries that this plan depends on to be able to execute it.
      *
      * valuesBySubQuery in {@link #execute(DependencyCarrier, PlannerContext, RowConsumer, Row, SubQueryResults)}

@@ -67,7 +67,6 @@ public class Union implements LogicalPlan {
     final LogicalPlan rhs;
     private final Map<LogicalPlan, SelectSymbol> dependencies;
 
-
     public Union(LogicalPlan lhs, LogicalPlan rhs, List<Symbol> outputs) {
         this.lhs = lhs;
         this.rhs = rhs;
@@ -173,6 +172,11 @@ public class Union implements LogicalPlan {
             return this;
         }
         return new Union(newLhs, newRhs, newOutputs);
+    }
+
+    @Override
+    public FetchPlanBuilder rewriteForFetch(Collection<Symbol> usedOutputs) {
+        return null;
     }
 
     @Override

@@ -303,6 +303,11 @@ public class Collect implements LogicalPlan {
     }
 
     @Override
+    public FetchPlanBuilder rewriteForFetch(Collection<Symbol> usedOutputs) {
+        return null;
+    }
+
+    @Override
     public Map<LogicalPlan, SelectSymbol> dependencies() {
         return Map.of();
     }
