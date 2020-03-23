@@ -27,7 +27,9 @@ import io.crate.analyze.expressions.ExpressionAnalysisContext;
 import io.crate.analyze.expressions.ExpressionAnalyzer;
 import io.crate.analyze.relations.FieldProvider;
 import io.crate.expression.InputFactory;
+import io.crate.expression.symbol.Literal;
 import io.crate.expression.symbol.Symbol;
+import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.CoordinatorTxnCtx;
 import io.crate.metadata.TransactionContext;
 import io.crate.metadata.doc.DocTableInfo;
@@ -118,7 +120,7 @@ public class CheckConstraintsTest extends CrateDummyClusterServiceUnitTest {
 
     @Test
     public void test_expression_analyzer_on_check_constraints_containing_fields() {
-        FieldProvider fieldProvider = FieldProvider.FIELDS_AS_LITERAL;
+        FieldProvider fieldProvider = (qualifiedName, path, operation) -> Literal.of(new ColumnIdent(qualifiedName.toString(), path).fqn());
         // ^ ^ the culprit
 
         ExpressionAnalyzer analyzer = new ExpressionAnalyzer(
