@@ -48,4 +48,14 @@ public class TypeSignatureTest extends CrateUnitTest {
         ObjectType objectType = ObjectType.builder().setInnerType("V", IntegerType.INSTANCE).build();
         assertThat(parseTypeSignature("object(text, integer)"), is(objectType.getTypeSignature()));
     }
+
+    @Test
+    public void testParsingOfNestedArray() {
+        var type = new ArrayType<>(
+            ObjectType.builder()
+                .setInnerType("x", new ArrayType<>(IntegerType.INSTANCE))
+            .build()
+        );
+        assertThat(parseTypeSignature("array(object(text, array(integer)))"), is(type.getTypeSignature()));
+    }
 }

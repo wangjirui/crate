@@ -404,7 +404,7 @@ public class SignatureBinder {
 
     private static class SolverReturnStatusMerger {
         // This class gives the overall status when multiple status are seen from different parts.
-        // The logic is simple and can be summarized as finding the right most item (based on the list below) seen so far:
+        // The logic can be summarized as finding the right most item (based on the list below) seen so far:
         //   UNCHANGED_SATISFIED, UNCHANGED_NOT_SATISFIED, CHANGED, UNSOLVABLE
         // If no item was seen ever, it provides UNCHANGED_SATISFIED.
 

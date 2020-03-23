@@ -27,7 +27,7 @@ import java.util.Objects;
 public class TypeVariableConstraint {
 
     public static TypeVariableConstraint typeVariable(String name) {
-        return new TypeVariableConstraint(name);
+        return new TypeVariableConstraint(name, false);
     }
 
     public static TypeVariableConstraint typeVariableOfAnyType(String name) {
@@ -36,10 +36,6 @@ public class TypeVariableConstraint {
 
     private final String name;
     private final boolean anyAllowed;
-
-    private TypeVariableConstraint(String name) {
-        this(name, false);
-    }
 
     private TypeVariableConstraint(String name, boolean anyAllowed) {
         this.name = name;

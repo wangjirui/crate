@@ -29,32 +29,23 @@ import java.util.List;
 
 public final class TypeCompatibility {
 
-    private static final TypeCompatibility INCOMPATIBLE = new TypeCompatibility(null, false);
-
     @Nullable
     public static DataType<?> getCommonType(DataType<?> firstType, DataType<?> secondType) {
-        TypeCompatibility compatibility = compatibility(firstType, secondType);
-        if (!compatibility.isCompatible()) {
-            return null;
-        }
-        return compatibility.getCommonType();
+        return compatibility(firstType, secondType);
     }
 
-    private static TypeCompatibility compatible(DataType<?> commonSuperType, boolean coercible) {
-        return new TypeCompatibility(commonSuperType, coercible);
-    }
-
-    private static TypeCompatibility compatibility(DataType<?> fromType, DataType<?> toType) {
+    @Nullable
+    private static DataType<?> compatibility(DataType<?> fromType, DataType<?> toType) {
         if (fromType.equals(toType)) {
-            return compatible(toType, true);
+            return toType;
         }
 
         if (fromType.equals(UndefinedType.INSTANCE)) {
-            return compatible(toType, true);
+            return toType;
         }
 
         if (toType.equals(UndefinedType.INSTANCE)) {
-            return compatible(fromType, false);
+            return fromType;
         }
 
         String fromTypeBaseName = fromType.getTypeSignature().getBaseTypeName();
@@ -64,15 +55,10 @@ public final class TypeCompatibility {
             if (!fromType.getTypeParameters().isEmpty() || !toType.getTypeParameters().isEmpty()) {
                 return typeCompatibilityForParametrizedType(fromType, toType);
             }
-            return compatible(fromType, false);
+            return fromType;
         }
 
-        DataType<?> commonType = convertTypeByPrecedence(fromType, toType);
-        if (commonType != null) {
-            return compatible(commonType, commonType.equals(toType));
-        }
-
-        return INCOMPATIBLE;
+        return convertTypeByPrecedence(fromType, toType);
     }
 
     @Nullable
@@ -99,51 +85,24 @@ public final class TypeCompatibility {
         return null;
     }
 
-    private static TypeCompatibility typeCompatibilityForParametrizedType(DataType<?> fromType, DataType<?> toType) {
+    @Nullable
+    private static DataType<?> typeCompatibilityForParametrizedType(DataType<?> fromType, DataType<?> toType) {
         ArrayList<TypeSignature> commonParameterTypes = new ArrayList<>();
         List<DataType<?>> fromTypeParameters = fromType.getTypeParameters();
         List<DataType<?>> toTypeParameters = toType.getTypeParameters();
 
         if (fromTypeParameters.size() != toTypeParameters.size()) {
-            return INCOMPATIBLE;
+            return null;
         }
 
-        boolean coercible = true;
         for (int i = 0; i < fromTypeParameters.size(); i++) {
-            TypeCompatibility compatibility = compatibility(fromTypeParameters.get(i), toTypeParameters.get(i));
-            if (!compatibility.isCompatible()) {
-                return INCOMPATIBLE;
+            DataType<?> compatibility = compatibility(fromTypeParameters.get(i), toTypeParameters.get(i));
+            if (compatibility == null) {
+                return null;
             }
-            coercible &= compatibility.isCoercible();
-            commonParameterTypes.add(compatibility.getCommonType().getTypeSignature());
+            commonParameterTypes.add(compatibility.getTypeSignature());
         }
         String typeBase = fromType.getTypeSignature().getBaseTypeName();
-        return compatible(
-            new TypeSignature(typeBase, Collections.unmodifiableList(commonParameterTypes)).createType(),
-            coercible);
-    }
-
-    @Nullable
-    private final DataType<?> commonType;
-    private final boolean coercible;
-
-    private TypeCompatibility(DataType<?> commonType, boolean coercible) {
-        this.commonType = commonType;
-        this.coercible = coercible;
-    }
-
-    public boolean isCompatible() {
-        return commonType != null;
-    }
-
-    public DataType<?> getCommonType() {
-        if (commonType == null) {
-            throw new IllegalStateException("Types are not compatible");
-        }
-        return commonType;
-    }
-
-    public boolean isCoercible() {
-        return coercible;
+        return new TypeSignature(typeBase, Collections.unmodifiableList(commonParameterTypes)).createType();
     }
 }
