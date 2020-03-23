@@ -9,7 +9,7 @@ dependencies {
     implementation project(':es:es-server')
     implementation "com.google.code.findbugs:jsr305:${versions.jsr305}"
     testImplementation project(':integration-testing')
-    testImplementation('org.junit.jupiter:junit-jupiter:5.6.0')
+    testImplementation("org.junit.jupiter:junit-jupiter:${versions.junit}")
     testImplementation("junit:junit:${versions.junit}")
     testRuntimeOnly("org.junit.vintage:junit-vintage-engine") {
         because 'allows JUnit 4 tests to run'
