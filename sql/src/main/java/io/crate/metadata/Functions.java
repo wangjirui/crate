@@ -31,7 +31,7 @@ import io.crate.metadata.functions.Signature;
 import io.crate.metadata.functions.SignatureBinder;
 import io.crate.metadata.functions.params.FuncParams;
 import io.crate.types.DataType;
-import io.crate.types.TypeSignatures;
+import io.crate.types.TypeSignature;
 import org.elasticsearch.common.collect.Tuple;
 import org.elasticsearch.common.inject.Inject;
 
@@ -230,7 +230,7 @@ public class Functions {
                     .bind(arguments);
                 if (boundSignature != null) {
                     // TODO: check for more specific function
-                    return candidate.apply(Lists2.map(boundSignature.getArgumentTypes(), TypeSignatures::getType));
+                    return candidate.apply(Lists2.map(boundSignature.getArgumentTypes(), TypeSignature::createType));
                 }
             }
         }

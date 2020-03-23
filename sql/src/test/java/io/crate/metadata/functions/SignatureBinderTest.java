@@ -39,9 +39,7 @@ import static io.crate.metadata.FunctionInfo.Type.SCALAR;
 import static io.crate.metadata.functions.TypeVariableConstraint.typeVariable;
 import static io.crate.metadata.functions.TypeVariableConstraint.typeVariableOfAnyType;
 import static io.crate.types.TypeSignature.parseTypeSignature;
-import static io.crate.types.TypeSignatures.getType;
 import static java.lang.String.format;
-import static java.util.Objects.requireNonNull;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
@@ -418,7 +416,7 @@ public class SignatureBinderTest extends CrateUnitTest {
 
     private DataType<?> type(String signature) {
         TypeSignature typeSignature = TypeSignature.parseTypeSignature(signature);
-        return requireNonNull(getType(typeSignature));
+        return typeSignature.createType();
     }
 
     private List<DataType<?>> types(List<String> signatures) {

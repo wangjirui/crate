@@ -28,7 +28,6 @@ import io.crate.types.DataType;
 import io.crate.types.ObjectType;
 import io.crate.types.TypeSignature;
 import io.crate.types.TypeSignatureParameter;
-import io.crate.types.TypeSignatures;
 import io.crate.types.UndefinedType;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.Loggers;
@@ -43,8 +42,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static io.crate.metadata.functions.TypeVariableConstraint.typeVariableOfAnyType;
-import static io.crate.types.TypeSignatures.getCommonSuperType;
-import static io.crate.types.TypeSignatures.getType;
+import static io.crate.types.TypeCompatibility.getCommonSuperType;
 import static java.lang.String.format;
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toMap;
@@ -76,8 +74,7 @@ public class SignatureBinder {
 
     @Nullable
     public Signature bind(List<DataType> actualArgumentTypes) {
-        BoundVariables boundVariables = bindVariables(Lists2.map(actualArgumentTypes,
-                                                                 DataType::getTypeSignature));
+        BoundVariables boundVariables = bindVariables(Lists2.map(actualArgumentTypes, DataType::getTypeSignature));
         if (boundVariables == null) {
             return null;
         }
@@ -228,11 +225,11 @@ public class SignatureBinder {
             if (typeVariableConstraint == null) {
                 return true;
             }
-            resultBuilder.add(new TypeParameterSolver(formalTypeSignature.getBase(), getType(actualTypeSignature)));
+            resultBuilder.add(new TypeParameterSolver(formalTypeSignature.getBase(), actualTypeSignature.createType()));
             return true;
         }
 
-        DataType<?> actualType = getType(actualTypeSignature);
+        DataType<?> actualType = actualTypeSignature.createType();
 
         List<TypeSignature> actualTypeParametersTypeSignatureProvider;
         if (UndefinedType.ID == actualType.id()) {
@@ -263,7 +260,7 @@ public class SignatureBinder {
         resultBuilder.add(new TypeRelationshipConstraintSolver(
             formalTypeSignature,
             typeVariables,
-            getType(actualTypeSignature),
+            actualTypeSignature.createType(),
             allowCoercion));
     }
 
@@ -408,7 +405,7 @@ public class SignatureBinder {
                                              DataType<?> fromType,
                                              TypeSignature toTypeSignature) {
         if (allowCoercion) {
-            return TypeSignatures.canCoerce(fromType, getType(toTypeSignature));
+            return fromType.isConvertableTo(toTypeSignature.createType());
         } else {
             return fromType.getTypeSignature().equals(toTypeSignature);
         }

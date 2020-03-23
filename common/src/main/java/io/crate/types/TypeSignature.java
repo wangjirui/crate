@@ -98,6 +98,29 @@ public class TypeSignature {
         return parameters;
     }
 
+    /**
+     * Create the concrete {@link DataType} for this type signature.
+     */
+    public DataType<?> createType() {
+        if (base.equalsIgnoreCase(ArrayType.NAME)) {
+            if (parameters.size() == 0) {
+                return new ArrayType<>(UndefinedType.INSTANCE);
+            }
+            DataType<?> innerType = parameters.get(0).getTypeSignature().createType();
+            return new ArrayType<>(innerType);
+        }
+        if (base.equalsIgnoreCase(ObjectType.NAME)) {
+            var builder = ObjectType.builder();
+            for (int i = 0; i < parameters.size() - 1;) {
+                var valTypeSignature = parameters.get(i + 1);
+                builder.setInnerType(String.valueOf(i), valTypeSignature.getTypeSignature().createType());
+                i += 2;
+            }
+            return builder.build();
+        }
+        return DataTypes.ofName(base);
+    }
+
     @Override
     public String toString() {
         if (parameters.isEmpty()) {
