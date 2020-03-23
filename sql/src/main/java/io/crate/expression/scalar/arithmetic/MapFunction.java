@@ -85,6 +85,9 @@ public class MapFunction extends Scalar<Object, Object> {
                 .kind(FunctionInfo.Type.SCALAR)
                 .typeVariableConstraints(List.of(typeVariableOfAnyType("V")))
                 .argumentTypes(parseTypeSignature("text"), parseTypeSignature("V"))
+                // This is not 100% correct because each variadic `V` is type independent, resulting in a return type
+                // of e.g. `object(text, int, text, geo_point, ...)`.
+                // This is *ok* as the returnType is currently not used directly, only for function description.
                 .returnType(parseTypeSignature("object(text, V)"))
                 .variableArityGroup(List.of(parseTypeSignature("text"), parseTypeSignature("V")))
                 .build(),
