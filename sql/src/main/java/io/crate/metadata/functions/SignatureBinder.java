@@ -23,9 +23,7 @@
 package io.crate.metadata.functions;
 
 import io.crate.common.collections.Lists2;
-import io.crate.types.ArrayType;
 import io.crate.types.DataType;
-import io.crate.types.ObjectType;
 import io.crate.types.TypeSignature;
 import io.crate.types.UndefinedType;
 import org.apache.logging.log4j.Logger;
@@ -41,7 +39,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static io.crate.metadata.functions.TypeVariableConstraint.typeVariableOfAnyType;
-import static io.crate.types.TypeCompatibility.getCommonSuperType;
+import static io.crate.types.TypeCompatibility.getCommonType;
 import static java.lang.String.format;
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toMap;
@@ -133,7 +131,7 @@ public class SignatureBinder {
     }
 
     private static TypeSignature applyBoundVariables(TypeSignature typeSignature, BoundVariables boundVariables) {
-        String baseType = typeSignature.getBase();
+        String baseType = typeSignature.getBaseTypeName();
         if (boundVariables.containsTypeVariable(baseType)) {
             if (typeSignature.getParameters().isEmpty() == false) {
                 throw new IllegalStateException("Type parameters cannot have parameters");
@@ -220,11 +218,11 @@ public class SignatureBinder {
                                             TypeSignature actualTypeSignature,
                                             boolean allowCoercion) {
         if (formalTypeSignature.getParameters().isEmpty()) {
-            TypeVariableConstraint typeVariableConstraint = typeVariableConstraints.get(formalTypeSignature.getBase());
+            TypeVariableConstraint typeVariableConstraint = typeVariableConstraints.get(formalTypeSignature.getBaseTypeName());
             if (typeVariableConstraint == null) {
                 return true;
             }
-            resultBuilder.add(new TypeParameterSolver(formalTypeSignature.getBase(), actualTypeSignature.createType()));
+            resultBuilder.add(new TypeParameterSolver(formalTypeSignature.getBaseTypeName(), actualTypeSignature.createType()));
             return true;
         }
 
@@ -235,14 +233,17 @@ public class SignatureBinder {
             actualTypeParametersTypeSignatureProvider = Collections.nCopies(formalTypeSignature.getParameters().size(),
                                                                             UndefinedType.INSTANCE.getTypeSignature());
         } else {
-            actualTypeParametersTypeSignatureProvider = fromTypes(actualType.getTypeParameters());
+            actualTypeParametersTypeSignatureProvider = Lists2.map(
+                actualType.getTypeParameters(),
+                DataType::getTypeSignature
+            );
         }
 
         return appendConstraintSolvers(
             resultBuilder,
             Collections.unmodifiableList(formalTypeSignature.getParameters()),
             actualTypeParametersTypeSignatureProvider,
-            allowCoercion && isCovariantTypeBase(formalTypeSignature.getBase()));
+            allowCoercion);
     }
 
     private void appendTypeRelationshipConstraintSolver(List<TypeConstraintSolver> resultBuilder,
@@ -257,19 +258,11 @@ public class SignatureBinder {
             allowCoercion));
     }
 
-    private static boolean isCovariantTypeBase(String typeBase) {
-        return typeBase.equals(ArrayType.NAME) || typeBase.equals(ObjectType.NAME);
-    }
-
-    private static List<TypeSignature> fromTypes(List<DataType<?>> types) {
-        return Lists2.map(types, DataType::getTypeSignature);
-    }
-
     private Set<String> typeVariablesOf(TypeSignature typeSignature) {
-        if (typeVariableConstraints.containsKey(typeSignature.getBase())) {
-            return Set.of(typeSignature.getBase());
+        if (typeVariableConstraints.containsKey(typeSignature.getBaseTypeName())) {
+            return Set.of(typeSignature.getBaseTypeName());
         }
-        Set<String> variables = new HashSet<>();
+        HashSet<String> variables = new HashSet<>();
         for (TypeSignature parameter : typeSignature.getParameters()) {
             variables.addAll(typeVariablesOf(parameter));
         }
@@ -320,7 +313,7 @@ public class SignatureBinder {
             if (LOGGER.isTraceEnabled()) {
                 LOGGER.trace("Not all variables are bound. Defined variables={}, bound={}",
                              typeVariableConstraints,
-                             boundVariables.getTypeVariables());
+                             boundVariables);
             }
             return null;
         }
@@ -328,7 +321,7 @@ public class SignatureBinder {
     }
 
     private boolean allTypeVariablesBound(BoundVariables boundVariables) {
-        return boundVariables.getTypeVariables().keySet().equals(typeVariableConstraints.keySet());
+        return boundVariables.getTypeVariableNames().equals(typeVariableConstraints.keySet());
     }
 
     @Nullable
@@ -374,11 +367,11 @@ public class SignatureBinder {
                                                Map<String, TypeVariableConstraint> typeVariableConstraints,
                                                List<TypeSignature> builder,
                                                int actualArity) {
-        TypeVariableConstraint typeVariableConstraint = typeVariableConstraints.get(typeSignature.getBase());
+        TypeVariableConstraint typeVariableConstraint = typeVariableConstraints.get(typeSignature.getBaseTypeName());
         if (typeVariableConstraint != null && typeVariableConstraint.isAnyAllowed()) {
             // Type variables defaults to be bound to the same type.
             // To support independent variable type arguments, each vararg must be bound to a dedicated type variable.
-            String constraintName = "_generated_" + typeSignature.getBase() + actualArity;
+            String constraintName = "_generated_" + typeSignature.getBaseTypeName() + actualArity;
             TypeSignature newTypeSignature = new TypeSignature(constraintName);
             typeVariableConstraints.put(constraintName, typeVariableOfAnyType(constraintName));
             builder.add(newTypeSignature);
@@ -461,14 +454,14 @@ public class SignatureBinder {
                 return SolverReturnStatus.CHANGED;
             }
             DataType<?> originalType = bindings.getTypeVariable(typeParameter);
-            DataType<?> commonSuperType = getCommonSuperType(originalType, actualType);
-            if (commonSuperType == null) {
+            DataType<?> commonType = getCommonType(originalType, actualType);
+            if (commonType == null) {
                 return SolverReturnStatus.UNSOLVABLE;
             }
-            if (commonSuperType.equals(originalType)) {
+            if (commonType.equals(originalType)) {
                 return SolverReturnStatus.UNCHANGED_SATISFIED;
             }
-            bindings.setTypeVariable(typeParameter, commonSuperType);
+            bindings.setTypeVariable(typeParameter, commonType);
             return SolverReturnStatus.CHANGED;
         }
 

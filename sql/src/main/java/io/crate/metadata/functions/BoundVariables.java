@@ -27,6 +27,7 @@ import io.crate.types.DataType;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 public class BoundVariables {
 
@@ -44,8 +45,8 @@ public class BoundVariables {
         return typeVariables.containsKey(variableName);
     }
 
-    public Map<String, DataType<?>> getTypeVariables() {
-        return typeVariables;
+    public Set<String> getTypeVariableNames() {
+        return typeVariables.keySet();
     }
 
     @Override
@@ -81,9 +82,8 @@ public class BoundVariables {
             return typeVariables.get(variableName);
         }
 
-        public Builder setTypeVariable(String variableName, DataType<?> variableValue) {
+        public void setTypeVariable(String variableName, DataType<?> variableValue) {
             typeVariables.put(variableName, variableValue);
-            return this;
         }
 
         public boolean containsTypeVariable(String variableName) {

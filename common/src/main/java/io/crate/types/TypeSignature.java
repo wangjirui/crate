@@ -32,6 +32,24 @@ import static java.lang.String.format;
 
 public class TypeSignature {
 
+    /**
+     * Creates a type signature out of the given signature string.
+     * A signature type string may contain parameters inside parenthesis:
+     * <p>
+     *   base_type_name(parameter [, parameter])
+     * </p>
+     *
+     * Custom parameterized type handling must also be supported by {@link #createType()}.
+     *
+     * Some examples:
+     * <p>
+     *      integer
+     *      array(integer)
+     *      array(E)
+     *      object(text, integer)
+     *      object(text, V)
+     * <p>
+     */
     public static TypeSignature parseTypeSignature(String signature) {
         if (!signature.contains("(")) {
             return new TypeSignature(signature);
@@ -78,20 +96,20 @@ public class TypeSignature {
         return parseTypeSignature(parameterName);
     }
 
-    private final String base;
+    private final String baseTypeName;
     private final List<TypeSignature> parameters;
 
-    public TypeSignature(String base) {
-        this(base, Collections.emptyList());
+    public TypeSignature(String baseTypeName) {
+        this(baseTypeName, Collections.emptyList());
     }
 
-    public TypeSignature(String base, List<TypeSignature> parameters) {
-        this.base = base;
+    public TypeSignature(String baseTypeName, List<TypeSignature> parameters) {
+        this.baseTypeName = baseTypeName;
         this.parameters = parameters;
     }
 
-    public String getBase() {
-        return base;
+    public String getBaseTypeName() {
+        return baseTypeName;
     }
 
     public List<TypeSignature> getParameters() {
@@ -99,17 +117,18 @@ public class TypeSignature {
     }
 
     /**
-     * Create the concrete {@link DataType} for this type signature
+     * Create the concrete {@link DataType} for this type signature.
+     * Only `array` and `object` parameterized type signatures are supported.
      */
     public DataType<?> createType() {
-        if (base.equalsIgnoreCase(ArrayType.NAME)) {
+        if (baseTypeName.equalsIgnoreCase(ArrayType.NAME)) {
             if (parameters.size() == 0) {
                 return new ArrayType<>(UndefinedType.INSTANCE);
             }
             DataType<?> innerType = parameters.get(0).createType();
             return new ArrayType<>(innerType);
         }
-        if (base.equalsIgnoreCase(ObjectType.NAME)) {
+        if (baseTypeName.equalsIgnoreCase(ObjectType.NAME)) {
             var builder = ObjectType.builder();
             for (int i = 0; i < parameters.size() - 1;) {
                 var valTypeSignature = parameters.get(i + 1);
@@ -118,16 +137,16 @@ public class TypeSignature {
             }
             return builder.build();
         }
-        return DataTypes.ofName(base);
+        return DataTypes.ofName(baseTypeName);
     }
 
     @Override
     public String toString() {
         if (parameters.isEmpty()) {
-            return base;
+            return baseTypeName;
         }
 
-        StringBuilder typeName = new StringBuilder(base);
+        StringBuilder typeName = new StringBuilder(baseTypeName);
         typeName.append("(").append(parameters.get(0));
         for (int i = 1; i < parameters.size(); i++) {
             typeName.append(",").append(parameters.get(i));
@@ -145,12 +164,12 @@ public class TypeSignature {
             return false;
         }
         TypeSignature that = (TypeSignature) o;
-        return base.equals(that.base) &&
+        return baseTypeName.equals(that.baseTypeName) &&
                parameters.equals(that.parameters);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(base, parameters);
+        return Objects.hash(baseTypeName, parameters);
     }
 }

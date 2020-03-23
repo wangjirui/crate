@@ -22,11 +22,9 @@
 
 package io.crate.metadata.functions;
 
-import io.crate.common.collections.Lists2;
 import io.crate.test.integration.CrateUnitTest;
 import io.crate.types.DataType;
 import io.crate.types.TypeSignature;
-import org.elasticsearch.test.junit.annotations.TestLogging;
 import org.junit.Test;
 
 import javax.annotation.Nullable;
@@ -44,7 +42,6 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 
-@TestLogging("io.crate.metadata.functions.SignatureBinder:TRACE")
 public class SignatureBinderTest extends CrateUnitTest {
 
     private static Signature.Builder functionSignature() {
@@ -419,10 +416,6 @@ public class SignatureBinderTest extends CrateUnitTest {
         return typeSignature.createType();
     }
 
-    private List<DataType<?>> types(List<String> signatures) {
-        return Lists2.map(signatures, this::type);
-    }
-
     private BindSignatureAssertion assertThat(Signature function) {
         return new BindSignatureAssertion(function);
     }
@@ -469,20 +462,17 @@ public class SignatureBinderTest extends CrateUnitTest {
             return this;
         }
 
-        public BindSignatureAssertion succeeds() {
+        public void succeeds() {
             assertThat(bindVariables(), notNullValue());
-            return this;
         }
 
-        public BindSignatureAssertion fails() {
+        public void fails() {
             assertThat(bindVariables(), nullValue());
-            return this;
         }
 
-        public BindSignatureAssertion produces(BoundVariables expected) {
+        public void produces(BoundVariables expected) {
             BoundVariables actual = bindVariables();
             assertThat(actual, is(expected));
-            return this;
         }
 
         @Nullable

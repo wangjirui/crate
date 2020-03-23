@@ -94,6 +94,9 @@ public final class Signature {
         }
 
         public Signature build() {
+            assert name != null : "Signature requires the 'name' to be set";
+            assert kind != null : "Signature requires the 'kind' to be set";
+            assert returnType != null : "Signature requires the 'returnType' to be set";
             return new Signature(
                 name,
                 kind,
@@ -163,6 +166,6 @@ public final class Signature {
         List<String> allConstraints = Lists2.map(typeVariableConstraints, TypeVariableConstraint::toString);
 
         return name + (allConstraints.isEmpty() ? "" : "<" + String.join(",", allConstraints) + ">") +
-               "(" + String.join(",", Lists2.map(argumentTypes, TypeSignature::toString)) + "):" + returnType;
+               "(" + Lists2.joinOn(",", argumentTypes, TypeSignature::toString) + "):" + returnType;
     }
 }
