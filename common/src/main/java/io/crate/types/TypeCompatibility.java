@@ -134,7 +134,7 @@ public final class TypeCompatibility {
     }
 
     private static TypeCompatibility typeCompatibilityForCovariantParametrizedType(DataType<?> fromType, DataType<?> toType) {
-        ArrayList<TypeSignatureParameter> commonParameterTypes = new ArrayList<>();
+        ArrayList<TypeSignature> commonParameterTypes = new ArrayList<>();
         List<DataType<?>> fromTypeParameters = fromType.getTypeParameters();
         List<DataType<?>> toTypeParameters = toType.getTypeParameters();
 
@@ -149,7 +149,7 @@ public final class TypeCompatibility {
                 return incompatible();
             }
             coercible &= compatibility.isCoercible();
-            commonParameterTypes.add(TypeSignatureParameter.of(compatibility.getCommonSuperType().getTypeSignature()));
+            commonParameterTypes.add(compatibility.getCommonSuperType().getTypeSignature());
         }
         String typeBase = fromType.getTypeSignature().getBase();
         return compatible(

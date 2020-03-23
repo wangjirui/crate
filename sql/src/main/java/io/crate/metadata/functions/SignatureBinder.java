@@ -27,7 +27,6 @@ import io.crate.types.ArrayType;
 import io.crate.types.DataType;
 import io.crate.types.ObjectType;
 import io.crate.types.TypeSignature;
-import io.crate.types.TypeSignatureParameter;
 import io.crate.types.UndefinedType;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.Loggers;
@@ -142,7 +141,7 @@ public class SignatureBinder {
             return boundVariables.getTypeVariable(baseType).getTypeSignature();
         }
 
-        List<TypeSignatureParameter> parameters = Lists2.map(
+        List<TypeSignature> parameters = Lists2.map(
             typeSignature.getParameters(),
             typeSignatureParameter -> applyBoundVariables(typeSignatureParameter, boundVariables));
 
@@ -239,15 +238,9 @@ public class SignatureBinder {
             actualTypeParametersTypeSignatureProvider = fromTypes(actualType.getTypeParameters());
         }
 
-        ArrayList<TypeSignature> formalTypeParameterTypeSignatures = new ArrayList<>();
-        for (TypeSignatureParameter formalTypeParameter : formalTypeSignature.getParameters()) {
-            TypeSignature typeSignature = formalTypeParameter.getTypeSignature();
-            formalTypeParameterTypeSignatures.add(typeSignature);
-        }
-
         return appendConstraintSolvers(
             resultBuilder,
-            Collections.unmodifiableList(formalTypeParameterTypeSignatures),
+            Collections.unmodifiableList(formalTypeSignature.getParameters()),
             actualTypeParametersTypeSignatureProvider,
             allowCoercion && isCovariantTypeBase(formalTypeSignature.getBase()));
     }
@@ -277,8 +270,8 @@ public class SignatureBinder {
             return Set.of(typeSignature.getBase());
         }
         Set<String> variables = new HashSet<>();
-        for (TypeSignatureParameter parameter : typeSignature.getParameters()) {
-            variables.addAll(typeVariablesOf(parameter.getTypeSignature()));
+        for (TypeSignature parameter : typeSignature.getParameters()) {
+            variables.addAll(typeVariablesOf(parameter));
         }
 
         return variables;
@@ -336,12 +329,6 @@ public class SignatureBinder {
 
     private boolean allTypeVariablesBound(BoundVariables boundVariables) {
         return boundVariables.getTypeVariables().keySet().equals(typeVariableConstraints.keySet());
-    }
-
-    private static TypeSignatureParameter applyBoundVariables(TypeSignatureParameter parameter,
-                                                              BoundVariables boundVariables) {
-        TypeSignature typeSignature = parameter.getTypeSignature();
-        return TypeSignatureParameter.of(applyBoundVariables(typeSignature, boundVariables));
     }
 
     @Nullable

@@ -62,7 +62,7 @@ public class ArrayType<T> extends DataType<List<T>> {
 
     @Override
     public TypeSignature getTypeSignature() {
-        return new TypeSignature(NAME, List.of(TypeSignatureParameter.of(innerType.getTypeSignature())));
+        return new TypeSignature(NAME, List.of(innerType.getTypeSignature()));
     }
 
     @Override

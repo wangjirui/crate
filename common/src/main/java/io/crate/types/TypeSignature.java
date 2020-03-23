@@ -38,7 +38,7 @@ public class TypeSignature {
         }
 
         String baseName = null;
-        List<TypeSignatureParameter> parameters = new ArrayList<>();
+        List<TypeSignature> parameters = new ArrayList<>();
         int parameterStart = -1;
         int bracketCount = 0;
 
@@ -73,19 +73,19 @@ public class TypeSignature {
         throw new IllegalArgumentException(format(Locale.ENGLISH, "Bad type signature: '%s'", signature));
     }
 
-    private static TypeSignatureParameter parseTypeSignatureParameter(String signature, int begin, int end) {
+    private static TypeSignature parseTypeSignatureParameter(String signature, int begin, int end) {
         String parameterName = signature.substring(begin, end).trim();
-        return TypeSignatureParameter.of(parseTypeSignature(parameterName));
+        return parseTypeSignature(parameterName);
     }
 
     private final String base;
-    private final List<TypeSignatureParameter> parameters;
+    private final List<TypeSignature> parameters;
 
     public TypeSignature(String base) {
         this(base, Collections.emptyList());
     }
 
-    public TypeSignature(String base, List<TypeSignatureParameter> parameters) {
+    public TypeSignature(String base, List<TypeSignature> parameters) {
         this.base = base;
         this.parameters = parameters;
     }
@@ -94,26 +94,26 @@ public class TypeSignature {
         return base;
     }
 
-    public List<TypeSignatureParameter> getParameters() {
+    public List<TypeSignature> getParameters() {
         return parameters;
     }
 
     /**
-     * Create the concrete {@link DataType} for this type signature.
+     * Create the concrete {@link DataType} for this type signature
      */
     public DataType<?> createType() {
         if (base.equalsIgnoreCase(ArrayType.NAME)) {
             if (parameters.size() == 0) {
                 return new ArrayType<>(UndefinedType.INSTANCE);
             }
-            DataType<?> innerType = parameters.get(0).getTypeSignature().createType();
+            DataType<?> innerType = parameters.get(0).createType();
             return new ArrayType<>(innerType);
         }
         if (base.equalsIgnoreCase(ObjectType.NAME)) {
             var builder = ObjectType.builder();
             for (int i = 0; i < parameters.size() - 1;) {
                 var valTypeSignature = parameters.get(i + 1);
-                builder.setInnerType(String.valueOf(i), valTypeSignature.getTypeSignature().createType());
+                builder.setInnerType(String.valueOf(i), valTypeSignature.createType());
                 i += 2;
             }
             return builder.build();

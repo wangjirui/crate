@@ -260,11 +260,11 @@ public class ObjectType extends DataType<Map<String, Object>> implements Streame
 
     @Override
     public TypeSignature getTypeSignature() {
-        ArrayList<TypeSignatureParameter> parameters = new ArrayList<>(innerTypes.size() * 2);
+        ArrayList<TypeSignature> parameters = new ArrayList<>(innerTypes.size() * 2);
         for (var type : innerTypes.values()) {
             // all keys are of type 'text'
-            parameters.add(TypeSignatureParameter.of(StringType.INSTANCE.getTypeSignature()));
-            parameters.add(TypeSignatureParameter.of(type.getTypeSignature()));
+            parameters.add(StringType.INSTANCE.getTypeSignature());
+            parameters.add(type.getTypeSignature());
         }
         return new TypeSignature(NAME, parameters);
     }
